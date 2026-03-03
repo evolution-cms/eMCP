@@ -233,6 +233,8 @@ DoD:
 - [x] Baseline unit test for model allowlist leakage (sensitive fields never exposed).
 - [ ] Integration tests for manager/API MCP endpoints.
 - [x] Add runtime integration harness script for manager/API/dispatch verification against deployed environment.
+- [x] Add release-branch CI runtime jobs (`demo-runtime-proof`, `runtime-integration`) with artifacts (`demo/logs.md`, `runtime-live.log`).
+- [ ] Configure repository branch protection to require `demo-runtime-proof` and `runtime-integration` on `release/*`.
 - [ ] Streaming tests under typical PHP-FPM constraints.
 - [ ] Async tests for `sTask` path and failover.
 - [x] Baseline feature-behavior test for dispatch idempotency semantics (`reuse` and `409 conflict`) with policy deny path.

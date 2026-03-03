@@ -20,7 +20,7 @@
 - Автоматично генерується `demo/logs.md` з деталями токена, MCP запитів/відповідей, manual-check командами і негативними probe-кейсами (`401/403/413/415/409/429`, `evo.model.get(User)` sanity).
 
 Залишок до RC-1 (core platform hardening):
-- live runtime integration job у GitHub Actions зі staging env/secrets;
+- branch protection required-check enforcement для CI runtime jobs (`demo-runtime-proof`, `runtime-integration`) на `release/*`;
 - live async checks для `sTask` (progress/result/retry/failover);
 - live stream/rate-limit операційні перевірки;
 - зафіксовані RC evidence артефакти (security sanity + performance baseline).

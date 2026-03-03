@@ -7,6 +7,11 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      run_demo_runtime:
+        description: 'Run demo runtime proof (make demo-all + artifacts)'
+        required: false
+        default: false
+        type: boolean
       run_runtime_integration:
         description: 'Run runtime integration checks against deployed environment'
         required: false
@@ -37,7 +42,11 @@ jobs:
 
   runtime-integration:
     needs: checks
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_runtime_integration == true }}
+    if: >-
+      ${{
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/'))
+        || (github.event_name == 'workflow_dispatch' && inputs.run_runtime_integration == true)
+      }}
     runs-on: ubuntu-latest
     env:
       EMCP_INTEGRATION_ENABLED: '1'
@@ -61,5 +70,74 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      - name: Validate live runtime secrets
+        run: |
+          set -eu
+          missing=""
+          for var in EMCP_BASE_URL EMCP_SERVER_HANDLE EMCP_API_PATH EMCP_API_TOKEN; do
+            eval "value=\${$var:-}"
+            if [ -z "$value" ]; then
+              missing="$missing $var"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "Missing required secrets/env for runtime integration:$missing" >&2
+            exit 1
+          fi
+
       - name: Runtime integration checks
-        run: composer run test:integration:runtime
+        run: |
+          set -eu
+          export EMCP_DISPATCH_CHECK="${EMCP_DISPATCH_CHECK:-1}"
+          composer run test:integration:runtime | tee runtime-live.log
+
+      - name: Upload runtime integration artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-live-log
+          path: runtime-live.log
+          if-no-files-found: warn
+
+  demo-runtime-proof:
+    needs: checks
+    if: >-
+      ${{
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/'))
+        || (github.event_name == 'workflow_dispatch' && inputs.run_demo_runtime == true)
+      }}
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      DEMO_JWT_SECRET: emcp-demo-secret-0123456789abcdef0123456789abcdef
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install Evolution installer
+        run: |
+          set -eu
+          composer global require evolution-cms/installer --no-interaction --no-progress
+          echo "$(composer global config bin-dir --absolute)" >> "$GITHUB_PATH"
+
+      - name: Run demo runtime proof
+        run: make demo-all
+
+      - name: Upload demo runtime artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-runtime-artifacts
+          path: |
+            demo/logs.md
+            /tmp/emcp-demo-php-server.log
+          if-no-files-found: warn

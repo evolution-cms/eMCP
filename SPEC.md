@@ -20,7 +20,7 @@ Current validation snapshot (2026-03-03):
 - One-click verification writes `demo/logs.md` with request/response evidence, negative transport/security probes (`401/403/413/415/409/429`) and model-safety sanity (`evo.model.get(User)` without sensitive fields).
 
 Open RC-1 validation scope:
-- live CI runtime integration (external env/secrets) is not yet mandatory-on-push;
+- live CI runtime integration jobs are wired for `release/*` pushes (`demo-runtime-proof`, `runtime-integration`), but branch-protection required-check enforcement must be configured in repository settings;
 - live async `sTask` e2e checks (queue lifecycle/progress/failover) are not yet enforced in CI;
 - live stream/rate-limit infra checks remain pending as RC evidence.
 

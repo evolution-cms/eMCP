@@ -628,6 +628,14 @@ foreach ($targets as $target) {
         if (!in_array($dispatchA['status'], [200, 202], true)) {
             fail("{$label} dispatch first call expected 200/202, got {$dispatchA['status']}.");
         }
+        $dispatchAJson = decodeJson($dispatchA['body']);
+        if (($dispatchAJson['reused'] ?? null) !== false) {
+            fail("{$label} dispatch first call must return reused=false.");
+        }
+        if (($dispatchAJson['idempotency_key'] ?? null) !== $key) {
+            fail("{$label} dispatch first call missing idempotency_key.");
+        }
+        $dispatchATaskId = is_numeric($dispatchAJson['task_id'] ?? null) ? (int)$dispatchAJson['task_id'] : null;
 
         $dispatchB = httpPostJson($dispatchUrl, [
             'jsonrpc' => '2.0',
@@ -642,6 +650,17 @@ foreach ($targets as $target) {
         if (!in_array($dispatchB['status'], [200, 202], true)) {
             fail("{$label} dispatch reuse expected 200/202, got {$dispatchB['status']}.");
         }
+        $dispatchBJson = decodeJson($dispatchB['body']);
+        if (($dispatchBJson['reused'] ?? null) !== true) {
+            fail("{$label} dispatch reuse must return reused=true.");
+        }
+        if (($dispatchBJson['idempotency_key'] ?? null) !== $key) {
+            fail("{$label} dispatch reuse missing idempotency_key.");
+        }
+        $dispatchBTaskId = is_numeric($dispatchBJson['task_id'] ?? null) ? (int)$dispatchBJson['task_id'] : null;
+        if ($dispatchATaskId !== null && $dispatchATaskId > 0 && $dispatchBTaskId !== $dispatchATaskId) {
+            fail("{$label} dispatch reuse expected same task_id={$dispatchATaskId}, got " . (string)($dispatchBJson['task_id'] ?? 'null') . '.');
+        }
 
         $dispatchC = httpPostJson($dispatchUrl, [
             'jsonrpc' => '2.0',
@@ -655,6 +674,14 @@ foreach ($targets as $target) {
 
         if ($dispatchC['status'] !== 409) {
             fail("{$label} dispatch conflict expected 409, got {$dispatchC['status']}.");
+        }
+        $dispatchCJson = decodeJson($dispatchC['body']);
+        if (($dispatchCJson['error']['code'] ?? null) !== 'idempotency_conflict') {
+            fail("{$label} dispatch conflict expected error.code=idempotency_conflict.");
+        }
+        $traceId = trim((string)($dispatchCJson['error']['trace_id'] ?? ''));
+        if ($traceId === '') {
+            fail("{$label} dispatch conflict missing error.trace_id.");
         }
     }
 

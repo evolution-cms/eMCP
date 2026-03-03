@@ -279,6 +279,10 @@ EMCP_DISPATCH_CHECK=1 \
 composer run test:integration:runtime
 ```
 
+CI release примітка:
+- `.github/workflows/ci.yml` запускає `demo-runtime-proof` і `runtime-integration` на push у `release/*`.
+- Для RC/release merge треба увімкнути branch protection і позначити ці jobs як required checks.
+
 ## Async через sTask
 Якщо `queue.driver=stask` і `sTask` встановлений, довгі MCP виклики виконуються через воркер `emcp_dispatch`.
 Якщо `sTask` відсутній — fallback визначається `queue.failover` (`sync` або `fail`).

@@ -280,6 +280,10 @@ EMCP_DISPATCH_CHECK=1 \
 composer run test:integration:runtime
 ```
 
+CI release note:
+- `.github/workflows/ci.yml` runs `demo-runtime-proof` and `runtime-integration` on `release/*` pushes.
+- Configure branch protection to make these jobs required for RC/release merges.
+
 ## Async (sTask-first)
 If `queue.driver=stask` and `sTask` is installed, eMCP can run long MCP calls via worker `emcp_dispatch`.
 If sTask is missing, fallback behavior follows `queue.failover` (`sync` or `fail`).

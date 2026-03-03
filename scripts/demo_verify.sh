@@ -384,6 +384,7 @@ model_get_user_payload='{"jsonrpc":"2.0","id":"model-doc","method":"tools/call",
 dispatch_payload_a='{"jsonrpc":"2.0","id":"d1-doc","method":"tools/call","params":{"name":"evo.content.search","arguments":{"limit":1,"offset":0}}}'
 dispatch_payload_b='{"jsonrpc":"2.0","id":"d2-doc","method":"tools/call","params":{"name":"evo.content.search","arguments":{"limit":2,"offset":0}}}'
 dispatch_url="${mcp_url}/dispatch"
+rate_limit_identity_type='api:jwt (sapi.jwt.user_id/sapi.jwt.sub; fallback ip)'
 
 unauth_headers_file="${TMP_DIR}/unauth.headers"
 unauth_raw=$(curl -sS -D "${unauth_headers_file}" \
@@ -455,10 +456,15 @@ dispatch_a_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${dispat
 dispatch_a_http_code=$(printf '%s' "${dispatch_a_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
 dispatch_a_response=$(printf '%s' "${dispatch_a_raw}" | sed '/^__HTTP_CODE__:/d')
 
-dispatch_b_headers="${TMP_DIR}/dispatch-b.headers"
-dispatch_b_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${dispatch_payload_b}" "${dispatch_b_headers}" "Idempotency-Key: demo-verify-k1" "${dispatch_url}")
-dispatch_b_http_code=$(printf '%s' "${dispatch_b_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
-dispatch_b_response=$(printf '%s' "${dispatch_b_raw}" | sed '/^__HTTP_CODE__:/d')
+dispatch_reuse_headers="${TMP_DIR}/dispatch-reuse.headers"
+dispatch_reuse_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${dispatch_payload_a}" "${dispatch_reuse_headers}" "Idempotency-Key: demo-verify-k1" "${dispatch_url}")
+dispatch_reuse_http_code=$(printf '%s' "${dispatch_reuse_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
+dispatch_reuse_response=$(printf '%s' "${dispatch_reuse_raw}" | sed '/^__HTTP_CODE__:/d')
+
+dispatch_conflict_headers="${TMP_DIR}/dispatch-conflict.headers"
+dispatch_conflict_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${dispatch_payload_b}" "${dispatch_conflict_headers}" "Idempotency-Key: demo-verify-k1" "${dispatch_url}")
+dispatch_conflict_http_code=$(printf '%s' "${dispatch_conflict_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
+dispatch_conflict_response=$(printf '%s' "${dispatch_conflict_raw}" | sed '/^__HTTP_CODE__:/d')
 
 model_headers_file="${TMP_DIR}/model.headers"
 model_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${model_get_user_payload}" "${model_headers_file}")
@@ -650,7 +656,11 @@ Response:
 ${oversized_response}
 \`\`\`
 
-### 10) Gate C negative probe: 409 idempotency conflict
+Result-size cap probe:
+- status: \`pending\`
+- reason: requires larger dataset or temporary per-server \`max_result_bytes\` override in demo runtime.
+
+### 10) Gate C idempotency probes (reuse + conflict)
 
 First dispatch HTTP: \`${dispatch_a_http_code}\`
 
@@ -659,11 +669,18 @@ First dispatch response:
 ${dispatch_a_response}
 \`\`\`
 
-Conflicting dispatch HTTP: \`${dispatch_b_http_code}\`
+Reuse dispatch HTTP (same key + same payload): \`${dispatch_reuse_http_code}\`
+
+Reuse dispatch response:
+\`\`\`json
+${dispatch_reuse_response}
+\`\`\`
+
+Conflicting dispatch HTTP (same key + different payload): \`${dispatch_conflict_http_code}\`
 
 Conflicting dispatch response:
 \`\`\`json
-${dispatch_b_response}
+${dispatch_conflict_response}
 \`\`\`
 
 ### 11) rate-limit probe: 429 with Retry-After
@@ -671,6 +688,7 @@ ${dispatch_b_response}
 429 observed: \`${rate_limit_observed}\`
 Retry-After: \`${rate_retry_after}\`
 HTTP: \`${rate_limit_http_code}\`
+Rate-limit identity type: \`${rate_limit_identity_type}\`
 
 Response:
 \`\`\`json
