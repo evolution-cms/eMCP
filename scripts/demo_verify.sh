@@ -76,7 +76,9 @@ fi
 
 echo "[demo-verify] Running package tests and runtime MCP verification..."
 echo "[demo-verify] Step 1/4: local smoke check (artisan emcp:test)"
+smoke_status="PASS"
 if ! (cd "${DEMO_CORE_DIR_PATH}" && php artisan emcp:test); then
+  smoke_status="WARN"
   echo "[demo-verify] Warning: artisan emcp:test failed in CLI mode; continuing with HTTP runtime checks."
 fi
 
@@ -234,6 +236,62 @@ mcp_post_with_optional_session() {
     "${mcp_url}" || true
 }
 
+mcp_post_with_token_optional_session() {
+  auth_token="$1"
+  payload="$2"
+  headers_file="$3"
+  extra_header="${4:-}"
+  target_url="${5:-${mcp_url}}"
+  session_override="${6:-auto}"
+  session_for_request="${session_id}"
+  if [ "${session_override}" = "none" ]; then
+    session_for_request=""
+  elif [ "${session_override}" != "auto" ]; then
+    session_for_request="${session_override}"
+  fi
+
+  if [ -n "${session_for_request}" ]; then
+    if [ -n "${extra_header}" ]; then
+      curl -sS -D "${headers_file}" \
+        -H 'Content-Type: application/json' \
+        -H "Authorization: Bearer ${auth_token}" \
+        -H "MCP-Session-Id: ${session_for_request}" \
+        -H "${extra_header}" \
+        -d "${payload}" \
+        -w "\n__HTTP_CODE__:%{http_code}" \
+        "${target_url}" || true
+      return
+    fi
+
+    curl -sS -D "${headers_file}" \
+      -H 'Content-Type: application/json' \
+      -H "Authorization: Bearer ${auth_token}" \
+      -H "MCP-Session-Id: ${session_for_request}" \
+      -d "${payload}" \
+      -w "\n__HTTP_CODE__:%{http_code}" \
+      "${target_url}" || true
+    return
+  fi
+
+  if [ -n "${extra_header}" ]; then
+    curl -sS -D "${headers_file}" \
+      -H 'Content-Type: application/json' \
+      -H "Authorization: Bearer ${auth_token}" \
+      -H "${extra_header}" \
+      -d "${payload}" \
+      -w "\n__HTTP_CODE__:%{http_code}" \
+      "${target_url}" || true
+    return
+  fi
+
+  curl -sS -D "${headers_file}" \
+    -H 'Content-Type: application/json' \
+    -H "Authorization: Bearer ${auth_token}" \
+    -d "${payload}" \
+    -w "\n__HTTP_CODE__:%{http_code}" \
+    "${target_url}" || true
+}
+
 tools_headers_file="${TMP_DIR}/tools.headers"
 tools_raw=$(mcp_post_with_optional_session "${tools_list_payload}" "${tools_headers_file}")
 tools_http_code=$(printf '%s' "${tools_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
@@ -263,6 +321,10 @@ EMCP_API_PATH="${api_prefix}/mcp/{server}" \
 EMCP_API_TOKEN="${token}" \
 EMCP_SERVER_HANDLE="${EMCP_SERVER_HANDLE}" \
 EMCP_DISPATCH_CHECK="${EMCP_DISPATCH_CHECK}" \
+EMCP_RUNTIME_NEGATIVE=1 \
+EMCP_RUNTIME_MODEL_SANITY=1 \
+EMCP_RUNTIME_NEGATIVE_REQUIRE_RATE_LIMIT=1 \
+EMCP_TEST_JWT_SECRET="${SAPI_JWT_SECRET}" \
 composer run test
 test_exit=$?
 set -e
@@ -271,6 +333,184 @@ test_status="PASS"
 if [ "${test_exit}" -ne 0 ]; then
   test_status="FAIL"
 fi
+
+probe_token=$(SAPI_JWT_SECRET="${SAPI_JWT_SECRET}" php -r '
+$secret = (string)getenv("SAPI_JWT_SECRET");
+$now = time();
+$payload = [
+    "sub" => "demo-probe",
+    "user_id" => 999,
+    "scopes" => ["*"],
+    "iat" => $now,
+    "exp" => $now + 3600,
+];
+$header = ["typ" => "JWT", "alg" => "HS256"];
+$base64Url = static function (string $data): string {
+    return rtrim(strtr(base64_encode($data), "+/", "-_"), "=");
+};
+$segments = [
+    $base64Url(json_encode($header, JSON_UNESCAPED_SLASHES)),
+    $base64Url(json_encode($payload, JSON_UNESCAPED_SLASHES)),
+];
+$signingInput = implode(".", $segments);
+$signature = hash_hmac("sha256", $signingInput, $secret, true);
+echo $signingInput . "." . $base64Url($signature);
+')
+
+probe_read_token=$(SAPI_JWT_SECRET="${SAPI_JWT_SECRET}" php -r '
+$secret = (string)getenv("SAPI_JWT_SECRET");
+$now = time();
+$payload = [
+    "sub" => "demo-probe-read",
+    "user_id" => 998,
+    "scopes" => ["mcp:read"],
+    "iat" => $now,
+    "exp" => $now + 3600,
+];
+$header = ["typ" => "JWT", "alg" => "HS256"];
+$base64Url = static function (string $data): string {
+    return rtrim(strtr(base64_encode($data), "+/", "-_"), "=");
+};
+$segments = [
+    $base64Url(json_encode($header, JSON_UNESCAPED_SLASHES)),
+    $base64Url(json_encode($payload, JSON_UNESCAPED_SLASHES)),
+];
+$signingInput = implode(".", $segments);
+$signature = hash_hmac("sha256", $signingInput, $secret, true);
+echo $signingInput . "." . $base64Url($signature);
+')
+
+model_get_user_payload='{"jsonrpc":"2.0","id":"model-doc","method":"tools/call","params":{"name":"evo.model.get","arguments":{"model":"User","id":1}}}'
+dispatch_payload_a='{"jsonrpc":"2.0","id":"d1-doc","method":"tools/call","params":{"name":"evo.content.search","arguments":{"limit":1,"offset":0}}}'
+dispatch_payload_b='{"jsonrpc":"2.0","id":"d2-doc","method":"tools/call","params":{"name":"evo.content.search","arguments":{"limit":2,"offset":0}}}'
+dispatch_url="${mcp_url}/dispatch"
+
+unauth_headers_file="${TMP_DIR}/unauth.headers"
+unauth_raw=$(curl -sS -D "${unauth_headers_file}" \
+  -H 'Content-Type: application/json' \
+  -d "${initialize_payload}" \
+  -w "\n__HTTP_CODE__:%{http_code}" \
+  "${mcp_url}" || true)
+unauth_http_code=$(printf '%s' "${unauth_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
+unauth_response=$(printf '%s' "${unauth_raw}" | sed '/^__HTTP_CODE__:/d')
+
+readonly_init_headers="${TMP_DIR}/readonly-init.headers"
+readonly_init_raw=$(mcp_post_with_token_optional_session "${probe_read_token}" "${initialize_payload}" "${readonly_init_headers}" "" "${mcp_url}" "none")
+readonly_init_code=$(printf '%s' "${readonly_init_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
+readonly_session_id=$(awk 'BEGIN{IGNORECASE=1} /^MCP-Session-Id:/{gsub("\r","",$2); print $2}' "${readonly_init_headers}" | tail -n 1)
+
+scope_headers_file="${TMP_DIR}/scope-denied.headers"
+if [ -n "${readonly_session_id}" ]; then
+  scope_raw=$(curl -sS -D "${scope_headers_file}" \
+    -H 'Content-Type: application/json' \
+    -H "Authorization: Bearer ${probe_read_token}" \
+    -H "MCP-Session-Id: ${readonly_session_id}" \
+    -d "${content_search_payload}" \
+    -w "\n__HTTP_CODE__:%{http_code}" \
+    "${mcp_url}" || true)
+else
+  scope_raw=$(curl -sS -D "${scope_headers_file}" \
+    -H 'Content-Type: application/json' \
+    -H "Authorization: Bearer ${probe_read_token}" \
+    -d "${content_search_payload}" \
+    -w "\n__HTTP_CODE__:%{http_code}" \
+    "${mcp_url}" || true)
+fi
+scope_http_code=$(printf '%s' "${scope_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
+scope_response=$(printf '%s' "${scope_raw}" | sed '/^__HTTP_CODE__:/d')
+
+unsupported_headers_file="${TMP_DIR}/unsupported.headers"
+unsupported_raw=$(curl -sS -D "${unsupported_headers_file}" \
+  -H 'Content-Type: text/plain' \
+  -H "Authorization: Bearer ${probe_token}" \
+  -d 'plain text body' \
+  -w "\n__HTTP_CODE__:%{http_code}" \
+  "${mcp_url}" || true)
+unsupported_http_code=$(printf '%s' "${unsupported_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
+unsupported_response=$(printf '%s' "${unsupported_raw}" | sed '/^__HTTP_CODE__:/d')
+
+oversized_payload=$(php -r '
+$pad = str_repeat("x", 300 * 1024);
+echo json_encode([
+  "jsonrpc" => "2.0",
+  "id" => "oversized-doc",
+  "method" => "tools/call",
+  "params" => [
+    "name" => "evo.content.search",
+    "arguments" => [
+      "limit" => 1,
+      "offset" => 0,
+      "padding" => $pad,
+    ],
+  ],
+], JSON_UNESCAPED_SLASHES);
+')
+oversized_headers_file="${TMP_DIR}/oversized.headers"
+oversized_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${oversized_payload}" "${oversized_headers_file}")
+oversized_http_code=$(printf '%s' "${oversized_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
+oversized_response=$(printf '%s' "${oversized_raw}" | sed '/^__HTTP_CODE__:/d')
+
+dispatch_a_headers="${TMP_DIR}/dispatch-a.headers"
+dispatch_a_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${dispatch_payload_a}" "${dispatch_a_headers}" "Idempotency-Key: demo-verify-k1" "${dispatch_url}")
+dispatch_a_http_code=$(printf '%s' "${dispatch_a_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
+dispatch_a_response=$(printf '%s' "${dispatch_a_raw}" | sed '/^__HTTP_CODE__:/d')
+
+dispatch_b_headers="${TMP_DIR}/dispatch-b.headers"
+dispatch_b_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${dispatch_payload_b}" "${dispatch_b_headers}" "Idempotency-Key: demo-verify-k1" "${dispatch_url}")
+dispatch_b_http_code=$(printf '%s' "${dispatch_b_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
+dispatch_b_response=$(printf '%s' "${dispatch_b_raw}" | sed '/^__HTTP_CODE__:/d')
+
+model_headers_file="${TMP_DIR}/model.headers"
+model_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${model_get_user_payload}" "${model_headers_file}")
+model_http_code=$(printf '%s' "${model_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
+model_response=$(printf '%s' "${model_raw}" | sed '/^__HTTP_CODE__:/d')
+model_sanity_result=$(printf '%s' "${model_response}" | php -r '
+$raw = stream_get_contents(STDIN);
+$json = json_decode($raw, true);
+if (!is_array($json) || isset($json["error"])) {
+    echo "FAILED: non-success model response";
+    exit(0);
+}
+$item = $json["result"]["structuredContent"]["item"] ?? null;
+if (!is_array($item)) {
+    echo "FAILED: missing structuredContent.item";
+    exit(0);
+}
+$sensitive = ["password","cachepwd","verified_key","refresh_token","access_token","sessionid"];
+$leaks = [];
+foreach ($sensitive as $field) {
+    if (array_key_exists($field, $item)) {
+        $leaks[] = $field;
+    }
+}
+if ($leaks !== []) {
+    echo "FAILED: leaked fields -> " . implode(", ", $leaks);
+    exit(0);
+}
+echo "PASS: no sensitive fields exposed";
+')
+
+rate_limit_observed="no"
+rate_retry_after="0"
+rate_limit_http_code="n/a"
+rate_limit_response='{}'
+i=0
+while [ "${i}" -lt 100 ]; do
+  i=$((i + 1))
+  rate_headers_file="${TMP_DIR}/rate-${i}.headers"
+  rate_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${tools_list_payload}" "${rate_headers_file}")
+  rate_code=$(printf '%s' "${rate_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
+  if [ "${rate_code}" = "429" ]; then
+    rate_limit_observed="yes"
+    rate_limit_http_code="${rate_code}"
+    rate_limit_response=$(printf '%s' "${rate_raw}" | sed '/^__HTTP_CODE__:/d')
+    rate_retry_after=$(awk 'BEGIN{IGNORECASE=1} /^Retry-After:/{gsub("\r","",$2); print $2}' "${rate_headers_file}" | tail -n 1)
+    if [ -z "${rate_retry_after}" ]; then
+      rate_retry_after="0"
+    fi
+    break
+  fi
+done
 
 run_utc_ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -285,6 +525,7 @@ Result: **${test_status}** (exit code: \`${test_exit}\`)
 - Base URL: \`${DEMO_BASE_URL}\`
 - API prefix: \`${api_prefix}\`
 - MCP endpoint: \`${mcp_url}\`
+- MCP dispatch endpoint: \`${mcp_url}/dispatch\`
 - Server handle: \`${EMCP_SERVER_HANDLE}\`
 - Token endpoint: \`${DEMO_BASE_URL}${api_prefix}/token\`
 - Token (masked): \`${token_masked}\`
@@ -293,7 +534,7 @@ Result: **${test_status}** (exit code: \`${test_exit}\`)
 
 ## Smoke Check
 
-\`php artisan emcp:test\`: passed (initialize/tools:list OK)
+\`php artisan emcp:test\`: ${smoke_status}
 
 ## HTTP / MCP Probe Requests
 
@@ -367,12 +608,92 @@ Response:
 ${get_response}
 \`\`\`
 
+Contract note:
+- \`result.structuredContent\` is the canonical contract payload.
+- \`result.content[].text\` is a compatibility mirror for MCP clients that rely on text blocks.
+
+### 6) security negative probe: 401 unauthenticated
+
+HTTP: \`${unauth_http_code}\`
+
+Response:
+\`\`\`json
+${unauth_response}
+\`\`\`
+
+### 7) security negative probe: 403 scope denied (read-only token on tools/call)
+
+Read-only initialize HTTP: \`${readonly_init_code}\`
+
+HTTP: \`${scope_http_code}\`
+
+Response:
+\`\`\`json
+${scope_response}
+\`\`\`
+
+### 8) limits negative probe: 415 unsupported media type
+
+HTTP: \`${unsupported_http_code}\`
+
+Response:
+\`\`\`json
+${unsupported_response}
+\`\`\`
+
+### 9) limits negative probe: 413 payload too large
+
+HTTP: \`${oversized_http_code}\`
+
+Response:
+\`\`\`json
+${oversized_response}
+\`\`\`
+
+### 10) Gate C negative probe: 409 idempotency conflict
+
+First dispatch HTTP: \`${dispatch_a_http_code}\`
+
+First dispatch response:
+\`\`\`json
+${dispatch_a_response}
+\`\`\`
+
+Conflicting dispatch HTTP: \`${dispatch_b_http_code}\`
+
+Conflicting dispatch response:
+\`\`\`json
+${dispatch_b_response}
+\`\`\`
+
+### 11) rate-limit probe: 429 with Retry-After
+
+429 observed: \`${rate_limit_observed}\`
+Retry-After: \`${rate_retry_after}\`
+HTTP: \`${rate_limit_http_code}\`
+
+Response:
+\`\`\`json
+${rate_limit_response}
+\`\`\`
+
+### 12) model sanity probe: evo.model.get(User)
+
+HTTP: \`${model_http_code}\`
+Result: \`${model_sanity_result}\`
+
+Response:
+\`\`\`json
+${model_response}
+\`\`\`
+
 ## How To Verify Manually
 
 1. Get token:
 \`\`\`bash
+# DEMO ONLY: use credentials provisioned by \`make demo-all\`
 curl -sS -H 'Content-Type: application/json' \\
-  -d '{"username":"${DEMO_ADMIN_USERNAME}","password":"${DEMO_ADMIN_PASSWORD}"}' \\
+  -d '{"username":"${DEMO_ADMIN_USERNAME}","password":"<DEMO_PASSWORD>"}' \\
   '${DEMO_BASE_URL}${api_prefix}/token'
 \`\`\`
 
@@ -394,6 +715,13 @@ curl -sS -H 'Content-Type: application/json' -H 'Authorization: Bearer <TOKEN>' 
 \`\`\`bash
 curl -sS -H 'Content-Type: application/json' -H 'Authorization: Bearer <TOKEN>' \\
   -d '${content_get_payload}' \\
+  '${mcp_url}'
+\`\`\`
+
+5. User model sanity check (must not expose sensitive fields):
+\`\`\`bash
+curl -sS -H 'Content-Type: application/json' -H 'Authorization: Bearer <TOKEN>' \\
+  -d '${model_get_user_payload}' \\
   '${mcp_url}'
 \`\`\`
 EOF

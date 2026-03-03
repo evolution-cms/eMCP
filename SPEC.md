@@ -17,7 +17,7 @@ Current validation snapshot (2026-03-03):
 - `php artisan emcp:test` PASS for `initialize` and `tools/list`.
 - Runtime HTTP integration PASS for `/api/v1/mcp/{server}`.
 - Verified content-read tool flow in runtime (`evo.content.search`, `evo.content.root_tree`, `evo.content.get`).
-- One-click verification writes `demo/logs.md` with request/response evidence.
+- One-click verification writes `demo/logs.md` with request/response evidence, negative transport/security probes (`401/403/413/415/409/429`) and model-safety sanity (`evo.model.get(User)` without sensitive fields).
 
 Open RC-1 validation scope:
 - live CI runtime integration (external env/secrets) is not yet mandatory-on-push;

@@ -17,7 +17,7 @@
 - `php artisan emcp:test` (`initialize`, `tools/list`) -> PASS.
 - Runtime HTTP integration (`tests/Integration/RuntimeIntegrationHttpTest.php`) -> PASS.
 - Підтверджено API шлях читання даних з БД через MCP (`evo.content.search`, `evo.content.root_tree`, `evo.content.get`).
-- Автоматично генерується `demo/logs.md` з деталями токена, MCP запитів/відповідей і manual-check командами.
+- Автоматично генерується `demo/logs.md` з деталями токена, MCP запитів/відповідей, manual-check командами і негативними probe-кейсами (`401/403/413/415/409/429`, `evo.model.get(User)` sanity).
 
 Залишок до RC-1 (core platform hardening):
 - live runtime integration job у GitHub Actions зі staging env/secrets;

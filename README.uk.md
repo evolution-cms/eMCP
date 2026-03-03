@@ -237,7 +237,7 @@ make demo-all
 
 Ця ціль встановлює demo Evo, запускає `php -S`, видає sApi JWT, виконує `php artisan emcp:test`, а потім `composer run test` з увімкненою HTTP runtime integration перевіркою.
 Після виконання детальні докази записуються у:
-- `demo/logs.md` (masked token, MCP payload-и, HTTP статуси, відповіді, manual verification команди)
+- `demo/logs.md` (masked token, MCP payload-и, HTTP статуси, відповіді, manual verification команди, а також negative probes: 401/403/413/415/409/429 і sanity check для `evo.model.get(User)`)
 - `/tmp/emcp-demo-php-server.log` (лог PHP built-in server)
 
 Якщо під час інсталяції потрібна GitHub авторизація API, передай токен через ENV (як у `evolution`):
