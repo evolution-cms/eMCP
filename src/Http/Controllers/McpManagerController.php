@@ -10,6 +10,7 @@ use EvolutionCMS\eMCP\Services\ServerRegistry;
 use EvolutionCMS\eMCP\Support\TraceContext;
 use EvolutionCMS\eMCP\Support\TransportError;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Laravel\Mcp\Server\Transport\HttpTransport;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -71,13 +72,20 @@ class McpManagerController
         try {
             $response = $this->runServer($request, $serverClass);
         } catch (\Throwable $e) {
+            $this->logInternalError($request, $server, $auditMethod, $e);
+
             if ((bool)config('app.debug', false)) {
                 throw $e;
             }
 
+            $errorMessage = 'Internal server error';
+            if (app()->runningInConsole()) {
+                $errorMessage = trim($e->getMessage()) !== '' ? $e->getMessage() : $errorMessage;
+            }
+
             return $this->finalizeResponse(
                 $request,
-                TransportError::response($request, 500, 'internal_error', 'Internal server error'),
+                TransportError::response($request, 500, 'internal_error', $errorMessage),
                 $server,
                 $auditMethod,
                 $startedAt
@@ -101,6 +109,26 @@ class McpManagerController
         }
 
         return $this->finalizeResponse($request, $response, $server, $auditMethod, $startedAt);
+    }
+
+    private function logInternalError(Request $request, string $server, string $method, \Throwable $e): void
+    {
+        try {
+            $channel = trim((string)config('cms.settings.eMCP.logging.channel', 'emcp'));
+            if ($channel === '') {
+                $channel = 'emcp';
+            }
+
+            Log::channel($channel)->error('emcp.internal_error', [
+                'server_handle' => $server,
+                'method' => $method,
+                'trace_id' => TraceContext::resolve($request),
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+        } catch (\Throwable) {
+            // Logging must not break request processing.
+        }
     }
 
     private function runServer(Request $request, string $serverClass): Response

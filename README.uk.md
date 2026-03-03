@@ -34,11 +34,8 @@ Versioning і BC policy: `PRD.md` (розділ `API Stability Policy`).
 - Evolution CMS 3.5.2+
 - PHP 8.4+
 - Composer 2.2+
-
-Опційно:
-- `seiger/sapi` для зовнішнього MCP API
-- `seiger/stask` для async dispatch
-- `laravel/passport` для OAuth-compatible режиму
+- `seiger/sapi` 1.x (встановлюється як залежність)
+- `seiger/stask` 1.x (встановлюється як залежність)
 
 ## Встановлення
 З директорії `core` вашого Evo:
@@ -183,7 +180,6 @@ return [
 ## Модель доступу
 - Внутрішній доступ (manager): permission `emcp`
 - API доступ (через sApi): JWT scopes (`mcp:read`, `mcp:call`, `mcp:admin`)
-- Optional Passport mode: сумісність з `mcp:use`, якщо Passport встановлено
 - Domain read tools (`evo.content.*`, `evo.model.*`) за замовчуванням read-only
 
 ## Взаємодія В Екосистемі
@@ -232,6 +228,14 @@ composer run ci:check
 ```
 
 Ці перевірки валідовують `composer.json` і виконують PHP syntax lint по всіх файлах пакета.
+
+One-click демо + повна MCP перевірка:
+
+```bash
+make demo-all
+```
+
+Ця ціль встановлює demo Evo, запускає `php -S`, видає sApi JWT, виконує `php artisan emcp:test`, а потім `composer run test` з увімкненою HTTP runtime integration перевіркою.
 
 Опційна runtime integration перевірка (проти розгорнутого середовища):
 

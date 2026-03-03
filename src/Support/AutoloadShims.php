@@ -2,6 +2,35 @@
 
 declare(strict_types=1);
 
+if (!function_exists('report')) {
+    /**
+     * Minimal Laravel-compatible report() shim for non-Laravel hosts.
+     */
+    function report(\Throwable $exception): void
+    {
+        try {
+            if (class_exists(\Illuminate\Support\Facades\Log::class)) {
+                try {
+                    \Illuminate\Support\Facades\Log::channel('emcp')->error('mcp.report', [
+                        'exception' => get_class($exception),
+                        'message' => $exception->getMessage(),
+                    ]);
+                    return;
+                } catch (\Throwable) {
+                    // Fallback below.
+                }
+
+                \Illuminate\Support\Facades\Log::error('mcp.report', [
+                    'exception' => $exception,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+        } catch (\Throwable) {
+            // Never let reporting failures break runtime.
+        }
+    }
+}
+
 $upstreamProvider = 'Laravel\\Mcp\\Server\\McpServiceProvider';
 $adapterProvider = 'EvolutionCMS\\eMCP\\LaravelMcp\\McpServiceProvider';
 

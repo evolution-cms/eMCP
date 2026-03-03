@@ -18,7 +18,7 @@ final class TransportError
         $traceId = TraceContext::resolve($request);
         $traceHeader = (string)config('cms.settings.eMCP.trace.header', 'X-Trace-Id');
 
-        $response = response()->json([
+        $response = new JsonResponse([
             'error' => [
                 'code' => $code,
                 'message' => $message,

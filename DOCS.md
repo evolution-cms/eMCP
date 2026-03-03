@@ -32,8 +32,7 @@ Implementation order is mandatory:
 - Gate A: web transport + manager route + manager ACL (`emcp`) + `initialize` + `tools/list` + `GET=405`
 - Gate B: API access layer (scope engine, basic rate limit, `sApi` provider)
 - Gate C: async (`sTask` worker, payload contract, failover, idempotency)
-- Gate D: optional Passport compatibility
-- Gate E: security hardening + DX commands
+- Gate D: security hardening + DX commands
 
 Minimal first release is Gate A only.
 
@@ -81,11 +80,8 @@ Mandatory:
 - Evolution CMS 3.5.2+
 - PHP 8.4+
 - Composer 2.2+
-
-Optional:
-- `seiger/sapi` for external API access
-- `seiger/stask` for async execution
-- `laravel/passport` for OAuth-compatible mode
+- `seiger/sapi` 1.x
+- `seiger/stask` 1.x
 
 ## 4) Install
 From Evo `core` directory:
@@ -375,12 +371,10 @@ Rules:
 ## 9) Auth Modes
 Supported modes:
 - `sapi_jwt` (default): uses `sApi` JWT middleware attributes
-- `passport` (optional): OAuth-compatible mode (`mcp:use`)
 - `none` (restricted/internal scenarios only)
 
 Behavior contract:
-- Passport mode is optional and must degrade safely if Passport is absent.
-- Missing optional auth dependencies must not break package boot.
+- Missing auth configuration must not break package boot.
 
 ## 10) Routes and Transports
 

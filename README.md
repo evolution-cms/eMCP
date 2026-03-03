@@ -34,11 +34,8 @@ Operations runbook: `OPERATIONS.md`.
 - Evolution CMS 3.5.2+
 - PHP 8.4+
 - Composer 2.2+
-
-Optional:
-- `seiger/sapi` for external MCP API access
-- `seiger/stask` for async MCP dispatch
-- `laravel/passport` for OAuth-compatible mode
+- `seiger/sapi` 1.x (installed as dependency)
+- `seiger/stask` 1.x (installed as dependency)
 
 ## Install
 From your Evo `core` directory:
@@ -184,7 +181,6 @@ Notes:
 ## Access Model
 - Manager/internal access: Evo permission `emcp`
 - API access (via sApi): JWT scopes (`mcp:read`, `mcp:call`, `mcp:admin`)
-- Optional Passport mode: `mcp:use` compatibility when Passport is installed
 - Domain reads (`evo.content.*`, `evo.model.*`) are read-only by default
 
 ## Ecosystem Interop
@@ -233,6 +229,14 @@ composer run ci:check
 ```
 
 These checks validate `composer.json` and run PHP syntax lint across package sources.
+
+One-click demo + full MCP verification:
+
+```bash
+make demo-all
+```
+
+This target installs demo Evo, starts `php -S`, issues sApi JWT, runs `php artisan emcp:test`, then runs `composer run test` with HTTP runtime integration enabled.
 
 Optional runtime integration check (against deployed environment):
 

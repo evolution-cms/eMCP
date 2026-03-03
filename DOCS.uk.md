@@ -32,8 +32,7 @@ Status marker:
 - Gate A: web transport + manager route + manager ACL (`emcp`) + `initialize` + `tools/list` + `GET=405`
 - Gate B: API access layer (scope engine, basic rate limit, `sApi` provider)
 - Gate C: async (`sTask` worker, payload contract, failover, idempotency)
-- Gate D: optional Passport compatibility
-- Gate E: security hardening + DX commands
+- Gate D: security hardening + DX commands
 
 Перший реліз — тільки Gate A.
 
@@ -81,11 +80,8 @@ php artisan make:mcp-tool HealthTool
 - Evolution CMS 3.5.2+
 - PHP 8.4+
 - Composer 2.2+
-
-Опційно:
-- `seiger/sapi` для зовнішнього API доступу
-- `seiger/stask` для async виконання
-- `laravel/passport` для OAuth-compatible режиму
+- `seiger/sapi` 1.x
+- `seiger/stask` 1.x
 
 ## 4) Встановлення
 З директорії `core` Evo:
@@ -375,12 +371,10 @@ Default allowlist моделей:
 ## 9) Режими аутентифікації
 Підтримувані режими:
 - `sapi_jwt` (default): використовує JWT атрибути `sApi`
-- `passport` (optional): OAuth-compatible режим (`mcp:use`)
 - `none` (лише для обмежених внутрішніх сценаріїв)
 
 Контракт:
-- Passport режим опційний і має безпечно деградувати, якщо Passport не встановлено
-- відсутність optional залежностей не повинна ламати boot пакета
+- відсутність auth-конфігурації не повинна ламати boot пакета
 
 ## 10) Routes і transports
 

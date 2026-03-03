@@ -8,7 +8,7 @@ use EvolutionCMS\eMCP\Http\Controllers\McpManagerController;
 use EvolutionCMS\eMCP\Services\ServerRegistry;
 use Illuminate\Console\Command;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class eMcpTestCommand extends Command
@@ -63,11 +63,15 @@ class eMcpTestCommand extends Command
             return self::FAILURE;
         }
 
-        $initializeResponse = $initialize['response'];
-        assert($initializeResponse instanceof Response);
+        $initializeResponse = $initialize['response'] ?? null;
+        if (!$initializeResponse instanceof HttpResponse) {
+            $this->error('initialize returned unexpected response type.');
+            return self::FAILURE;
+        }
 
         if ($initializeResponse->getStatusCode() !== 200) {
             $this->error('initialize failed with HTTP ' . $initializeResponse->getStatusCode());
+            $this->line((string)$initializeResponse->getContent());
             return self::FAILURE;
         }
 
@@ -102,11 +106,15 @@ class eMcpTestCommand extends Command
             return self::FAILURE;
         }
 
-        $toolsListResponse = $toolsList['response'];
-        assert($toolsListResponse instanceof Response);
+        $toolsListResponse = $toolsList['response'] ?? null;
+        if (!$toolsListResponse instanceof HttpResponse) {
+            $this->error('tools/list returned unexpected response type.');
+            return self::FAILURE;
+        }
 
         if ($toolsListResponse->getStatusCode() !== 200) {
             $this->error('tools/list failed with HTTP ' . $toolsListResponse->getStatusCode());
+            $this->line((string)$toolsListResponse->getContent());
             return self::FAILURE;
         }
 
@@ -118,6 +126,7 @@ class eMcpTestCommand extends Command
 
         if (!isset($toolsListJson['result']['tools']) || !is_array($toolsListJson['result']['tools'])) {
             $this->error('tools/list response does not contain result.tools array.');
+            $this->line((string)$toolsListResponse->getContent());
             return self::FAILURE;
         }
 
@@ -178,7 +187,7 @@ class eMcpTestCommand extends Command
 
     /**
      * @param  array<string, mixed>  $payload
-     * @return array{response?: Response, error?: string}
+     * @return array{response?: HttpResponse, error?: string}
      */
     private function dispatchJsonRpc(string $serverHandle, array $payload, string $sessionId = ''): array
     {
@@ -199,6 +208,10 @@ class eMcpTestCommand extends Command
             $response = $controller($request, $serverHandle);
         } catch (\Throwable $e) {
             return ['error' => 'JSON-RPC dispatch failed: ' . $e->getMessage()];
+        }
+
+        if (!$response instanceof HttpResponse) {
+            return ['error' => 'Unexpected response type: ' . get_debug_type($response)];
         }
 
         if ($response instanceof StreamedResponse) {

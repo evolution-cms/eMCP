@@ -2,9 +2,20 @@
 set -eu
 
 if command -v rg >/dev/null 2>&1; then
-  files="$(rg --files -g '*.php')"
+  files="$(rg --files \
+    -g '*.php' \
+    -g '!vendor/**' \
+    -g '!demo/**' \
+    -g '!node_modules/**' \
+    -g '!.git/**' \
+    -g '!.idea/**')"
 else
-  files="$(find . -type f -name '*.php' | sed 's|^\./||')"
+  files="$(
+    find . \
+      \( -type d \( -name vendor -o -name demo -o -name node_modules -o -name .git -o -name .idea \) -prune \) \
+      -o \( -type f -name '*.php' -print \) \
+      | sed 's|^\./||'
+  )"
 fi
 
 if [ -z "${files}" ]; then
