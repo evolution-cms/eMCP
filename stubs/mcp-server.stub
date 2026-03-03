@@ -1,0 +1,12 @@
+<?php
+
+namespace DummyNamespace;
+
+use Laravel\Mcp\Server;
+
+class DummyClass extends Server
+{
+    protected string $name = 'Dummy MCP Server';
+
+    protected string $version = '1.0.0';
+}

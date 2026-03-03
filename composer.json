@@ -1,0 +1,85 @@
+{
+  "name": "evolution-cms/emcp",
+  "description": "Official MCP platform layer for Evolution CMS",
+  "license": "MIT",
+  "type": "evolutioncms-plugin",
+  "keywords": [
+    "evo",
+    "evocms",
+    "evolution-cms",
+    "mcp",
+    "laravel-mcp"
+  ],
+  "require": {
+    "php": "^8.4",
+    "evolution-cms/evolution": "^3.5.2",
+    "laravel/mcp": "^0.5"
+  },
+  "suggest": {
+    "seiger/sapi": "Required for external API mode and scope middleware integration",
+    "seiger/stask": "Required for async dispatch worker integration",
+    "laravel/passport": "Optional OAuth-compatible mode"
+  },
+  "autoload": {
+    "psr-4": {
+      "EvolutionCMS\\eMCP\\": "src/"
+    },
+    "files": [
+      "src/Support/AutoloadShims.php"
+    ]
+  },
+  "scripts": {
+    "validate:composer": "composer validate --strict",
+    "lint:php": "sh scripts/lint-php.sh",
+    "test:unit:redactor": "php tests/Unit/RedactorTest.php",
+    "test:unit:security-policy": "php tests/Unit/SecurityPolicyTest.php",
+    "test:unit:model-field-leakage": "php tests/Unit/ModelFieldPolicyLeakageTest.php",
+    "test:feature:dispatch-idempotency": "php tests/Feature/DispatchIdempotencyBehaviorTest.php",
+    "test:integration:runtime": "php tests/Integration/RuntimeIntegrationHttpTest.php",
+    "test:phase25": "php tests/Phase25/ContractsAndPipelineTest.php",
+    "test:phase25:raw-tv": "php tests/Phase25/RawTvDslContractTest.php",
+    "test:phase3": "php tests/Phase3/GateCAndSecurityStructureTest.php",
+    "test:phase6:fixtures": "php tests/Phase6/GoldenFixturesTest.php",
+    "test:phase6:governance": "php tests/Phase6/GovernanceGuardsTest.php",
+    "governance:update-lock": "php scripts/update_governance_lock.php",
+    "ci:check": "sh scripts/ci_check.sh",
+    "check": [
+      "@validate:composer",
+      "@lint:php"
+    ],
+    "test": [
+      "@check",
+      "@test:unit:redactor",
+      "@test:unit:security-policy",
+      "@test:unit:model-field-leakage",
+      "@test:phase25",
+      "@test:phase25:raw-tv",
+      "@test:phase3",
+      "@test:feature:dispatch-idempotency",
+      "@test:phase6:fixtures",
+      "@test:phase6:governance",
+      "@test:integration:runtime"
+    ]
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "EvolutionCMS\\eMCP\\eMCPServiceProvider"
+      ]
+    },
+    "evolution": {
+      "providers": [
+        "EvolutionCMS\\eMCP\\eMCPServiceProvider"
+      ]
+    },
+    "sapi": {
+      "route_providers": [
+        {
+          "class": "EvolutionCMS\\eMCP\\Api\\Routes\\McpRouteProvider",
+          "endpoint": "mcp",
+          "version": "v1"
+        }
+      ]
+    }
+  }
+}

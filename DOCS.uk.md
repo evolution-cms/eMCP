@@ -6,6 +6,11 @@
 Contract boundary:
 - `SPEC.md` і `TOOLSET.md` є нормативними.
 - `DOCS.uk.md` описує імплементацію та експлуатацію цих контрактів.
+- `OPERATIONS.md` є day-2 runbook для операторів (profiles, health checks, triage).
+
+Status marker:
+- Цільовий контракт: `SPEC 1.0-contract`.
+- Runtime baseline в поточному репозиторії: `Gate C baseline implemented (full validation pending)`.
 
 ## 1) Огляд
 `eMCP` — thin Evo-native адаптер над `laravel/mcp`.
@@ -31,6 +36,43 @@ Contract boundary:
 - Gate E: security hardening + DX commands
 
 Перший реліз — тільки Gate A.
+
+## 2.1) Контракт Сумісності З Laravel MCP
+eMCP зберігає upstream-поведінку `laravel/mcp` як базу:
+- `GET` на MCP transport route повертає `405`.
+- `POST` обробляє JSON-RPC повідомлення.
+- `MCP-Session-Id` проходить наскрізно request/response.
+- `202` зберігається для no-reply notification flows.
+- SSE-відповідь має `text/event-stream`, коли streaming увімкнено.
+- Upstream command surface (`make:mcp-*`, `mcp:start`, `mcp:inspector`) доступний без змін.
+
+eMCP-логіка є додатковою (ACL/scopes/policies), а не переписуванням протоколу.
+
+## 2.2) Карта Взаємодії В Екосистемі
+- `sApi`: зовнішня експозиція MCP endpoint через route providers і JWT scopes.
+- `sTask`: async dispatch довгих MCP викликів (`emcp_dispatch` worker).
+- `eAi`: AI runtime може споживати eMCP tools у manager/API режимі.
+- `dAi`: manager-side orchestration UI може споживати стабільні eMCP tool contracts.
+
+Правило boundary:
+- eMCP надає протокол/runtime/policy контракти.
+- orchestration-концепції реалізуються у пакетах-споживачах, не в ядрі eMCP.
+
+## 2.3) Швидкий Шлях: Один MCP Server, Внутрішній + Зовнішній
+1. Згенеруй базові класи:
+```bash
+php artisan make:mcp-server ContentServer
+php artisan make:mcp-tool HealthTool
+```
+Згенеровані класи потрапляють у `core/custom/app/Mcp/...`.
+2. Додай server entry у `core/custom/config/mcp.php`.
+3. Перевір manager/internal виклик:
+- `POST /{manager_prefix}/{handle}` з manager-сесією і permission `emcp`.
+4. Перевір зовнішній API виклик (якщо встановлено `sApi`):
+- `POST /{SAPI_BASE_PATH}/{SAPI_VERSION}/mcp/{handle}`
+- `Authorization: Bearer <jwt>` з потрібними `mcp:*` scopes.
+5. Опційний async режим:
+- `queue.driver=stask` + dispatch endpoint + task progress.
 
 ## Посібник користувача
 
@@ -122,6 +164,8 @@ return [
 
     'limits' => [
         'max_payload_kb' => 256,
+        'max_result_items' => 100,
+        'max_result_bytes' => 1048576,
     ],
 
     'logging' => [
@@ -143,6 +187,7 @@ return [
             'max_offset' => 5000,
         ],
         'models' => [
+            'max_offset' => 5000,
             'allow' => [
                 'SiteTemplate', 'SiteTmplvar', 'SiteTmplvarContentvalue',
                 'SiteSnippet', 'SitePlugin', 'SiteModule', 'Category',
@@ -176,7 +221,7 @@ return [
             'handle' => 'content',
             'transport' => 'web',
             'route' => '/mcp/content',
-            'class' => App\Mcp\Servers\ContentServer::class,
+            'class' => EvolutionCMS\eMCP\Servers\ContentServer::class,
             'enabled' => true,
             'auth' => 'sapi_jwt',
             'scopes' => ['mcp:read', 'mcp:call'],
@@ -184,12 +229,16 @@ return [
         [
             'handle' => 'content-local',
             'transport' => 'local',
-            'class' => App\Mcp\Servers\ContentServer::class,
-            'enabled' => true,
+            'class' => EvolutionCMS\eMCP\Servers\ContentServer::class,
+            'enabled' => false,
         ],
     ],
 ];
 ```
+
+Нотатка:
+- `content-local` за замовчуванням вимкнений, щоб уникнути конфлікту дубльованих tool names з `content`.
+- Локальний transport вмикай лише коли конфліктні сервери вимкнені або мають різні tool names.
 
 Правила валідації:
 - `handle` має бути унікальним
@@ -207,6 +256,23 @@ return [
 Семантика route:
 - У Gate A manager endpoint має формат `/{manager_prefix}/{handle}`.
 - `servers[*].route` є route-привʼязкою web transport і зовнішньо актуальний у API mode (Gate B+).
+
+## 6.3 Конфіг-Пресети (Практично)
+Використовуй ці пресети, щоб швидко стартувати:
+
+- `manager-only`:
+  - `mode.internal=true`, `mode.api=false`
+  - тільки manager endpoint (`/{manager_prefix}/{handle}`)
+- `api-only`:
+  - `mode.internal=false`, `mode.api=true`
+  - потрібні `sApi` + JWT scopes
+- `hybrid` (рекомендований дефолт):
+  - `mode.internal=true`, `mode.api=true`
+  - один і той самий tool contract для manager і API споживачів
+
+Async-доповнення (для будь-якого пресету):
+- `queue.driver=stask` для довгих викликів.
+- `queue.failover=sync` для безпечного fallback, якщо `sTask` відсутній.
 
 ## 7) Модель реєстрації серверів
 Upstream Laravel MCP очікує `routes/ai.php`.
@@ -253,6 +319,16 @@ Upstream Laravel MCP очікує `routes/ai.php`.
 - заборонити raw `tvFilter` DSL-рядки у клієнтському payload
 - дозволити тільки whitelist операторів/cast
 - примусово обмежувати `depth/limit/offset` через config
+
+Contract-first стиль виконання:
+- кожен tool call іде по pipeline `validate -> authorize -> query -> map -> paginate`
+- один tool має відповідати одному явному handler/procedure
+- приховані side-effect у transport/controller поза pipeline небажані
+
+Профіль orchestration execution (post-MVP):
+- `Intent -> PolicyCheck -> Task(s) -> EvidenceTrace -> ApprovalGate`
+- дії планувальника мають бути обмежені policy-valid action set
+- зв'язок intent/task/evidence має бути аудитопридатним end-to-end
 
 Профіль model catalog (read-only за замовчуванням):
 - `evo.model.list`
@@ -324,10 +400,12 @@ Default allowlist моделей:
 - `POST /mcp/{server}/dispatch`
 
 Рекомендований middleware chain:
-- `sapi.jwt`
+- `emcp.jwt`
 - `emcp.scope`
 - `emcp.actor`
 - `emcp.rate`
+
+`McpRouteProvider` прибирає upstream `sapi.jwt` з MCP route і використовує `emcp.jwt` як єдиний JWT middleware.
 
 Error handling policy:
 - transport/auth/middleware помилки -> HTTP status (`401/403/405/413/415`) у non-JSON-RPC форматі.
@@ -445,12 +523,17 @@ php artisan mcp:start content-local
 php artisan mcp:inspector content-local
 ```
 
-Заплановані операційні команди eMCP:
+Перед `mcp:start content-local` увімкни `content-local` у `core/custom/config/mcp.php` і вимкни конфліктні сервери, якщо вони мають однакові tool names.
+
+Доступні операційні команди eMCP:
 
 ```bash
 php artisan emcp:test
-php artisan emcp:sync-workers
 php artisan emcp:list-servers
+php artisan emcp:sync-workers
+composer run governance:update-lock
+composer run ci:check
+EMCP_INTEGRATION_ENABLED=1 EMCP_BASE_URL="https://example.org" EMCP_API_PATH="/api/v1/mcp/{server}" EMCP_API_TOKEN="<jwt>" composer run test:integration:runtime
 ```
 
 ## 16) Troubleshooting

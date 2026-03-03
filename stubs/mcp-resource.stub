@@ -1,0 +1,19 @@
+<?php
+
+namespace DummyNamespace;
+
+use Laravel\Mcp\Response;
+use Laravel\Mcp\Server\Resource;
+
+class DummyClass extends Resource
+{
+    public function uri(): string
+    {
+        return 'resource://dummy';
+    }
+
+    public function handle(): Response
+    {
+        return Response::text('OK');
+    }
+}

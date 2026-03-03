@@ -1,0 +1,18 @@
+{
+  "jsonrpc": "2.0",
+  "id": "init-1",
+  "result": {
+    "protocolVersion": "2025-11-25",
+    "serverInfo": {
+      "name": "eMCP Content Server",
+      "version": "1.0.0",
+      "platform": "eMCP",
+      "platformVersion": "dev"
+    },
+    "capabilities": {
+      "evo": {
+        "toolsetVersion": "1.0"
+      }
+    }
+  }
+}

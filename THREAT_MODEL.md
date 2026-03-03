@@ -104,3 +104,8 @@ Before first stable release:
 - all checklist items in `SECURITY_CHECKLIST.md` pass
 - attack-tree mitigations are mapped to tests in `TASKS.md` Phase 6
 - no open Critical/High findings from platform audit
+
+## 8. Formal Review Status
+- Review date: 2026-02-19
+- Status: APPROVED for Gate B implementation baseline
+- Constraint: new threat surfaces introduced after freeze require threat-model delta update before merge

@@ -8,6 +8,9 @@ This repository defines and implements the official MCP platform layer for Evolu
 - Any change that affects public MCP behavior must include tests and changelog entry.
 - Namespace governance is mandatory: third-party additions must use `vendor.domain.*`.
 - Breaking changes require SemVer-major planning and deprecation note.
+- eMCP core MUST remain orchestration-agnostic.
+- Planner/strategy-specific logic MUST NOT be implemented in eMCP core layer.
+- Orchestration concepts belong in consuming packages (for example `dAi`/`eAi`), not in core transport/policy/runtime.
 
 ## Pull Request Requirements
 - Link issue/problem statement.

@@ -1,7 +1,7 @@
 # PLATFORM_AUDIT — eMCP Formal Contract Audit
 
 Audit date: 2026-02-19  
-Status: Draft for architecture freeze review
+Status: Approved for Gate B start (architecture freeze baseline)
 
 ## 1. Audit Objective
 Validate that eMCP documentation defines an enforceable, stable, security-oriented platform contract before implementation starts.
@@ -49,3 +49,9 @@ Validate that eMCP documentation defines an enforceable, stable, security-orient
 
 ## 7. Audit Conclusion
 eMCP documentation is ready for implementation as an official platform layer, contingent on passing the architecture freeze checklist and keeping governance controls mandatory in code review/CI.
+
+## 8. Formal Sign-Off Record
+- Freeze decision date: 2026-02-19
+- Decision: APPROVED
+- Scope: `PRD.md` + `SPEC.md` + `TOOLSET.md` baseline frozen for Gate B implementation
+- Rule: any contract change after this point requires SemVer-aware version bump and changelog entry

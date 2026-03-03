@@ -1,0 +1,14 @@
+<?php
+
+namespace DummyNamespace;
+
+use Laravel\Mcp\Response;
+use Laravel\Mcp\Server\Prompt;
+
+class DummyClass extends Prompt
+{
+    public function handle(): Response
+    {
+        return Response::text('OK');
+    }
+}

@@ -6,6 +6,11 @@ It is the implementation-oriented guide aligned with `PRD.md` and `SPEC.md`.
 Contract boundary:
 - `SPEC.md` and `TOOLSET.md` are normative.
 - `DOCS.md` describes how to implement and operate those contracts.
+- `OPERATIONS.md` is the day-2 operator runbook (profiles, health checks, triage).
+
+Status marker:
+- Contract target: `SPEC 1.0-contract`.
+- Runtime baseline in current repository: `Gate C baseline implemented (full validation pending)`.
 
 ## 1) Overview
 `eMCP` is a thin Evo-native adapter around `laravel/mcp`.
@@ -31,6 +36,43 @@ Implementation order is mandatory:
 - Gate E: security hardening + DX commands
 
 Minimal first release is Gate A only.
+
+## 2.1) Laravel MCP Parity Contract
+eMCP keeps upstream `laravel/mcp` behavior as the baseline:
+- `GET` on MCP transport route returns `405`.
+- `POST` processes JSON-RPC messages.
+- `MCP-Session-Id` is passed through request/response.
+- `202` is preserved for no-reply notification flows.
+- SSE transport response uses `text/event-stream` when streaming is enabled.
+- Upstream command surface (`make:mcp-*`, `mcp:start`, `mcp:inspector`) remains available.
+
+eMCP-specific logic is additive (ACL/scopes/policies), not a protocol rewrite.
+
+## 2.2) Ecosystem Interop Map
+- `sApi`: external exposure for MCP endpoints through route providers and JWT scopes.
+- `sTask`: async dispatch for long-running MCP calls (`emcp_dispatch` worker).
+- `eAi`: AI runtime can consume eMCP tools in manager or API mode.
+- `dAi`: manager orchestration UI can consume stable eMCP tool contracts.
+
+Boundary rule:
+- eMCP provides protocol/runtime/policy contracts.
+- orchestration concepts live in consuming packages, not in eMCP core.
+
+## 2.3) Fast Path: One MCP Server, Internal + External
+1. Generate primitives:
+```bash
+php artisan make:mcp-server ContentServer
+php artisan make:mcp-tool HealthTool
+```
+Generated classes are placed under `core/custom/app/Mcp/...`.
+2. Register server entry in `core/custom/config/mcp.php`.
+3. Verify manager/internal call:
+- `POST /{manager_prefix}/{handle}` with manager session and `emcp` permission.
+4. Verify external API call (with `sApi` installed):
+- `POST /{SAPI_BASE_PATH}/{SAPI_VERSION}/mcp/{handle}`
+- `Authorization: Bearer <jwt>` with required `mcp:*` scopes.
+5. Optional async mode:
+- `queue.driver=stask` + dispatch endpoint + task progress tracking.
 
 ## User Guide
 
@@ -122,6 +164,8 @@ return [
 
     'limits' => [
         'max_payload_kb' => 256,
+        'max_result_items' => 100,
+        'max_result_bytes' => 1048576,
     ],
 
     'logging' => [
@@ -143,6 +187,7 @@ return [
             'max_offset' => 5000,
         ],
         'models' => [
+            'max_offset' => 5000,
             'allow' => [
                 'SiteTemplate', 'SiteTmplvar', 'SiteTmplvarContentvalue',
                 'SiteSnippet', 'SitePlugin', 'SiteModule', 'Category',
@@ -176,7 +221,7 @@ return [
             'handle' => 'content',
             'transport' => 'web',
             'route' => '/mcp/content',
-            'class' => App\Mcp\Servers\ContentServer::class,
+            'class' => EvolutionCMS\eMCP\Servers\ContentServer::class,
             'enabled' => true,
             'auth' => 'sapi_jwt',
             'scopes' => ['mcp:read', 'mcp:call'],
@@ -184,12 +229,16 @@ return [
         [
             'handle' => 'content-local',
             'transport' => 'local',
-            'class' => App\Mcp\Servers\ContentServer::class,
-            'enabled' => true,
+            'class' => EvolutionCMS\eMCP\Servers\ContentServer::class,
+            'enabled' => false,
         ],
     ],
 ];
 ```
+
+Note:
+- `content-local` is disabled by default to avoid duplicate tool-name registration conflicts with `content`.
+- Enable local transport only when conflicting server entries are disabled or use non-overlapping tool names.
 
 Validation rules:
 - `handle` must be unique
@@ -207,6 +256,23 @@ Optional per-server overrides:
 Route semantics:
 - Gate A manager endpoint is `/{manager_prefix}/{handle}`.
 - `servers[*].route` is the web transport route binding and is externally relevant in API mode (Gate B+).
+
+## 6.3 Configuration Presets (Practical)
+Use these presets to reduce setup friction:
+
+- `manager-only`:
+  - `mode.internal=true`, `mode.api=false`
+  - use manager endpoint only (`/{manager_prefix}/{handle}`)
+- `api-only`:
+  - `mode.internal=false`, `mode.api=true`
+  - require `sApi` + JWT scopes
+- `hybrid` (recommended default):
+  - `mode.internal=true`, `mode.api=true`
+  - same tool contract available for manager and API consumers
+
+Async add-on (any preset):
+- `queue.driver=stask` for long-running calls.
+- `queue.failover=sync` for resilient fallback on installations without `sTask`.
 
 ## 7) Server Registration Model
 Upstream Laravel MCP expects `routes/ai.php`.
@@ -253,6 +319,16 @@ Safety constraints:
 - reject raw `tvFilter` DSL strings from client payloads
 - allow only approved operators/casts
 - enforce `depth/limit/offset` caps from config
+
+Contract-first execution style:
+- each tool call follows `validate -> authorize -> query -> map -> paginate`
+- one tool should map to one explicit handler/procedure
+- hidden query/policy side effects outside the pipeline are discouraged
+
+Orchestration execution profile (post-MVP):
+- `Intent -> PolicyCheck -> Task(s) -> EvidenceTrace -> ApprovalGate`
+- planner actions should be constrained by policy-valid action sets
+- intent/task/evidence linkage should be auditable end-to-end
 
 Model catalog profile (read-only by default):
 - `evo.model.list`
@@ -324,10 +400,12 @@ Via `McpRouteProvider` (`RouteProviderInterface`):
 - `POST /mcp/{server}/dispatch`
 
 Recommended middleware chain:
-- `sapi.jwt`
+- `emcp.jwt`
 - `emcp.scope`
 - `emcp.actor`
 - `emcp.rate`
+
+`McpRouteProvider` removes upstream `sapi.jwt` from MCP routes and uses `emcp.jwt` as the single JWT middleware.
 
 Error handling policy:
 - transport/auth/middleware failures -> HTTP status (`401/403/405/413/415`) with non-JSON-RPC error body.
@@ -445,12 +523,17 @@ php artisan mcp:start content-local
 php artisan mcp:inspector content-local
 ```
 
-Planned eMCP operational commands:
+Before `mcp:start content-local`, enable `content-local` in `core/custom/config/mcp.php` and disable conflicting server entries if they expose identical tool names.
+
+Available eMCP operational commands:
 
 ```bash
 php artisan emcp:test
-php artisan emcp:sync-workers
 php artisan emcp:list-servers
+php artisan emcp:sync-workers
+composer run governance:update-lock
+composer run ci:check
+EMCP_INTEGRATION_ENABLED=1 EMCP_BASE_URL="https://example.org" EMCP_API_PATH="/api/v1/mcp/{server}" EMCP_API_TOKEN="<jwt>" composer run test:integration:runtime
 ```
 
 ## 16) Troubleshooting

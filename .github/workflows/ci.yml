@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_runtime_integration:
+        description: 'Run runtime integration checks against deployed environment'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Validate composer files
+        run: composer validate --strict
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run CI checks
+        run: composer run ci:check
+
+  runtime-integration:
+    needs: checks
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_runtime_integration == true }}
+    runs-on: ubuntu-latest
+    env:
+      EMCP_INTEGRATION_ENABLED: '1'
+      EMCP_BASE_URL: ${{ secrets.EMCP_BASE_URL }}
+      EMCP_SERVER_HANDLE: ${{ secrets.EMCP_SERVER_HANDLE }}
+      EMCP_API_PATH: ${{ secrets.EMCP_API_PATH }}
+      EMCP_API_TOKEN: ${{ secrets.EMCP_API_TOKEN }}
+      EMCP_MANAGER_PATH: ${{ secrets.EMCP_MANAGER_PATH }}
+      EMCP_MANAGER_COOKIE: ${{ secrets.EMCP_MANAGER_COOKIE }}
+      EMCP_DISPATCH_CHECK: ${{ secrets.EMCP_DISPATCH_CHECK }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Runtime integration checks
+        run: composer run test:integration:runtime

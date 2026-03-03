@@ -1,0 +1,19 @@
+{
+    "toolset_version": "1.0",
+    "canonical_tools": [
+        "evo.content.search",
+        "evo.content.get",
+        "evo.content.root_tree",
+        "evo.content.descendants",
+        "evo.content.ancestors",
+        "evo.content.children",
+        "evo.content.siblings",
+        "evo.model.list",
+        "evo.model.get"
+    ],
+    "spec_version": "1.0-contract",
+    "runtime_status": "Gate C baseline implemented (full validation pending)",
+    "spec_public_contract_hash": "752772e83d65c41fe55bd6ddef3359a8ab04f0e3efe67d4901e79870d1967e7b",
+    "model_allowlists_hash": "2e27381b6120a53f4adb6da3649fcc5319530da4f6e41063d7b7b0700d600731",
+    "updated_at": "2026-03-02T14:48:22+00:00"
+}

@@ -1,0 +1,17 @@
+{
+  "jsonrpc": "2.0",
+  "id": "tools-1",
+  "result": {
+    "tools": [
+      { "name": "evo.content.search" },
+      { "name": "evo.content.get" },
+      { "name": "evo.content.root_tree" },
+      { "name": "evo.content.descendants" },
+      { "name": "evo.content.ancestors" },
+      { "name": "evo.content.children" },
+      { "name": "evo.content.siblings" },
+      { "name": "evo.model.list" },
+      { "name": "evo.model.get" }
+    ]
+  }
+}
