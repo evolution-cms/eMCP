@@ -239,6 +239,7 @@ make demo-all
 This target installs demo Evo, starts `php -S`, issues sApi JWT, runs `php artisan emcp:test`, then runs `composer run test` with HTTP runtime integration enabled.
 After run, detailed evidence is written to:
 - `demo/logs.md` (token/masked auth info, MCP request payloads, HTTP statuses, responses, manual verification commands, plus negative probes: 401/403/413/415/409/429 and `evo.model.get(User)` sanity)
+- `demo/logs.md` also includes local `sTask` lifecycle proof (`queued -> completed`) via `php artisan stask:worker` in demo runtime.
 - `/tmp/emcp-demo-php-server.log` (php built-in server log)
 
 If GitHub API auth is needed during install, pass token via ENV (same pattern as `evolution`):

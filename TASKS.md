@@ -237,6 +237,7 @@ DoD:
 - [ ] Configure repository branch protection to require `demo-runtime-proof` and `runtime-integration` on `release/*`.
 - [ ] Streaming tests under typical PHP-FPM constraints.
 - [ ] Async tests for `sTask` path and failover.
+- [x] Add local demo `sTask` lifecycle proof in `demo/logs.md` (`queued -> completed`) using `php artisan stask:worker`.
 - [x] Baseline feature-behavior test for dispatch idempotency semantics (`reuse` and `409 conflict`) with policy deny path.
 - [ ] Functional tests for `SiteContent` tree/TV tool contracts.
 - [ ] Security tests for forbidden fields and invalid TV operators/casts.

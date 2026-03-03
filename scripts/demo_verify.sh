@@ -325,6 +325,10 @@ EMCP_RUNTIME_NEGATIVE=1 \
 EMCP_RUNTIME_MODEL_SANITY=1 \
 EMCP_RUNTIME_NEGATIVE_REQUIRE_RATE_LIMIT=1 \
 EMCP_TEST_JWT_SECRET="${SAPI_JWT_SECRET}" \
+EMCP_STASK_LIFECYCLE_CHECK=1 \
+EMCP_STASK_WORKER_CMD="php artisan stask:worker" \
+EMCP_STASK_WORKER_CWD="${DEMO_CORE_DIR_PATH}" \
+EMCP_STASK_POLL_ATTEMPTS=20 \
 composer run test
 test_exit=$?
 set -e
@@ -465,6 +469,69 @@ dispatch_conflict_headers="${TMP_DIR}/dispatch-conflict.headers"
 dispatch_conflict_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${dispatch_payload_b}" "${dispatch_conflict_headers}" "Idempotency-Key: demo-verify-k1" "${dispatch_url}")
 dispatch_conflict_http_code=$(printf '%s' "${dispatch_conflict_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
 dispatch_conflict_response=$(printf '%s' "${dispatch_conflict_raw}" | sed '/^__HTTP_CODE__:/d')
+
+dispatch_lifecycle_key='demo-verify-k2'
+dispatch_lifecycle_start_headers="${TMP_DIR}/dispatch-lifecycle-start.headers"
+dispatch_lifecycle_start_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${dispatch_payload_a}" "${dispatch_lifecycle_start_headers}" "Idempotency-Key: ${dispatch_lifecycle_key}" "${dispatch_url}")
+dispatch_lifecycle_start_http_code=$(printf '%s' "${dispatch_lifecycle_start_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
+dispatch_lifecycle_start_response=$(printf '%s' "${dispatch_lifecycle_start_raw}" | sed '/^__HTTP_CODE__:/d')
+dispatch_lifecycle_task_id=$(printf '%s' "${dispatch_lifecycle_start_response}" | php -r '
+$raw = stream_get_contents(STDIN);
+$json = json_decode($raw, true);
+$taskId = $json["task_id"] ?? null;
+if (is_numeric($taskId) && (int)$taskId > 0) {
+    echo (string)(int)$taskId;
+}
+')
+
+stask_worker_exit=0
+stask_worker_output=""
+if [ -n "${dispatch_lifecycle_task_id}" ]; then
+  set +e
+  stask_worker_output=$(cd "${DEMO_CORE_DIR_PATH}" && php artisan stask:worker 2>&1)
+  stask_worker_exit=$?
+  set -e
+else
+  stask_worker_exit=1
+  stask_worker_output="No task_id returned from lifecycle dispatch start; async path unavailable."
+fi
+
+dispatch_lifecycle_after_headers="${TMP_DIR}/dispatch-lifecycle-after.headers"
+dispatch_lifecycle_after_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${dispatch_payload_a}" "${dispatch_lifecycle_after_headers}" "Idempotency-Key: ${dispatch_lifecycle_key}" "${dispatch_url}")
+dispatch_lifecycle_after_http_code=$(printf '%s' "${dispatch_lifecycle_after_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
+dispatch_lifecycle_after_response=$(printf '%s' "${dispatch_lifecycle_after_raw}" | sed '/^__HTTP_CODE__:/d')
+
+stask_lifecycle_result=$(DISPATCH_START="${dispatch_lifecycle_start_response}" DISPATCH_AFTER="${dispatch_lifecycle_after_response}" WORKER_EXIT="${stask_worker_exit}" php -r '
+$start = json_decode((string)getenv("DISPATCH_START"), true);
+$after = json_decode((string)getenv("DISPATCH_AFTER"), true);
+$workerExit = (int)getenv("WORKER_EXIT");
+if (!is_array($start)) {
+    echo "FAILED: lifecycle start response is not JSON";
+    exit(0);
+}
+if (!is_array($after)) {
+    echo "FAILED: lifecycle after-worker response is not JSON";
+    exit(0);
+}
+if ($workerExit !== 0) {
+    echo "FAILED: stask worker exited with code " . $workerExit;
+    exit(0);
+}
+if (($after["reused"] ?? null) !== true) {
+    echo "FAILED: lifecycle reuse response has reused!=true";
+    exit(0);
+}
+if (($after["status"] ?? null) !== "completed") {
+    echo "FAILED: lifecycle status is not completed";
+    exit(0);
+}
+$result = $after["result"] ?? null;
+if (!is_array($result)) {
+    echo "FAILED: lifecycle completed response has no result payload";
+    exit(0);
+}
+echo "PASS: queued -> completed with persisted result";
+')
 
 model_headers_file="${TMP_DIR}/model.headers"
 model_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${model_get_user_payload}" "${model_headers_file}")
@@ -705,6 +772,33 @@ Response:
 ${model_response}
 \`\`\`
 
+### 13) local sTask lifecycle probe (queued -> completed)
+
+Dispatch start HTTP: \`${dispatch_lifecycle_start_http_code}\`
+Task ID: \`${dispatch_lifecycle_task_id:-n/a}\`
+
+Dispatch start response:
+\`\`\`json
+${dispatch_lifecycle_start_response}
+\`\`\`
+
+Worker command: \`php artisan stask:worker\`  
+Worker exit code: \`${stask_worker_exit}\`
+
+Worker output:
+\`\`\`
+${stask_worker_output}
+\`\`\`
+
+Dispatch after worker HTTP: \`${dispatch_lifecycle_after_http_code}\`
+
+Dispatch after worker response:
+\`\`\`json
+${dispatch_lifecycle_after_response}
+\`\`\`
+
+Lifecycle result: \`${stask_lifecycle_result}\`
+
 ## How To Verify Manually
 
 1. Get token:
@@ -741,6 +835,12 @@ curl -sS -H 'Content-Type: application/json' -H 'Authorization: Bearer <TOKEN>' 
 curl -sS -H 'Content-Type: application/json' -H 'Authorization: Bearer <TOKEN>' \\
   -d '${model_get_user_payload}' \\
   '${mcp_url}'
+\`\`\`
+
+6. Local sTask worker run (optional lifecycle proof in demo):
+\`\`\`bash
+cd '${DEMO_CORE_DIR_PATH}'
+php artisan stask:worker
 \`\`\`
 EOF
 

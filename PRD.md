@@ -18,6 +18,7 @@
 - Runtime HTTP integration (`tests/Integration/RuntimeIntegrationHttpTest.php`) -> PASS.
 - Підтверджено API шлях читання даних з БД через MCP (`evo.content.search`, `evo.content.root_tree`, `evo.content.get`).
 - Автоматично генерується `demo/logs.md` з деталями токена, MCP запитів/відповідей, manual-check командами і негативними probe-кейсами (`401/403/413/415/409/429`, `evo.model.get(User)` sanity).
+- `demo/logs.md` додатково включає локальний `sTask` lifecycle proof (`queued -> completed`) через `php artisan stask:worker`.
 
 Залишок до RC-1 (core platform hardening):
 - branch protection required-check enforcement для CI runtime jobs (`demo-runtime-proof`, `runtime-integration`) на `release/*`;

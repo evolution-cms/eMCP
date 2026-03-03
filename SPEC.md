@@ -18,6 +18,7 @@ Current validation snapshot (2026-03-03):
 - Runtime HTTP integration PASS for `/api/v1/mcp/{server}`.
 - Verified content-read tool flow in runtime (`evo.content.search`, `evo.content.root_tree`, `evo.content.get`).
 - One-click verification writes `demo/logs.md` with request/response evidence, negative transport/security probes (`401/403/413/415/409/429`) and model-safety sanity (`evo.model.get(User)` without sensitive fields).
+- `demo/logs.md` also captures local `sTask` lifecycle proof (`queued -> completed`) in demo runtime.
 
 Open RC-1 validation scope:
 - live CI runtime integration jobs are wired for `release/*` pushes (`demo-runtime-proof`, `runtime-integration`), but branch-protection required-check enforcement must be configured in repository settings;

@@ -282,6 +282,44 @@ function issueHs256Jwt(array $payload, string $secret): string
     return $signingInput . '.' . $encode($signature);
 }
 
+/**
+ * @return array{exit:int, output:string}
+ */
+function runShellCommand(string $command, string $cwd = ''): array
+{
+    if (function_exists('proc_open')) {
+        $descriptors = [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+        $proc = proc_open($command, $descriptors, $pipes, $cwd !== '' ? $cwd : null);
+        if (is_resource($proc)) {
+            fclose($pipes[0]);
+            $stdout = stream_get_contents($pipes[1]);
+            fclose($pipes[1]);
+            $stderr = stream_get_contents($pipes[2]);
+            fclose($pipes[2]);
+            $exit = proc_close($proc);
+
+            return [
+                'exit' => is_int($exit) ? $exit : 1,
+                'output' => trim((string)$stdout . (string)$stderr),
+            ];
+        }
+    }
+
+    $prefix = $cwd !== '' ? 'cd ' . escapeshellarg($cwd) . ' && ' : '';
+    $outputLines = [];
+    $exit = 1;
+    @exec($prefix . $command . ' 2>&1', $outputLines, $exit);
+
+    return [
+        'exit' => $exit,
+        'output' => trim(implode("\n", $outputLines)),
+    ];
+}
+
 $enabled = getenv('EMCP_INTEGRATION_ENABLED');
 if ($enabled !== '1') {
     info('Skipped (set EMCP_INTEGRATION_ENABLED=1 to run runtime integration checks).');
@@ -339,6 +377,13 @@ $requireRateLimitProbe = getenv('EMCP_RUNTIME_NEGATIVE_REQUIRE_RATE_LIMIT') === 
 $rateProbeMaxAttempts = (int)getenv('EMCP_RUNTIME_RATE_PROBE_MAX');
 if ($rateProbeMaxAttempts < 1) {
     $rateProbeMaxAttempts = 90;
+}
+$runStaskLifecycleCheck = getenv('EMCP_STASK_LIFECYCLE_CHECK') === '1';
+$staskWorkerCommand = trim((string)getenv('EMCP_STASK_WORKER_CMD'));
+$staskWorkerCwd = trim((string)getenv('EMCP_STASK_WORKER_CWD'));
+$staskPollAttempts = (int)getenv('EMCP_STASK_POLL_ATTEMPTS');
+if ($staskPollAttempts < 1) {
+    $staskPollAttempts = 20;
 }
 
 $readOnlyToken = trim((string)getenv('EMCP_TEST_JWT_READ_TOKEN'));
@@ -682,6 +727,79 @@ foreach ($targets as $target) {
         $traceId = trim((string)($dispatchCJson['error']['trace_id'] ?? ''));
         if ($traceId === '') {
             fail("{$label} dispatch conflict missing error.trace_id.");
+        }
+
+        if ($runStaskLifecycleCheck && $label === 'api') {
+            if ($staskWorkerCommand === '' || $staskWorkerCwd === '') {
+                fail("{$label} sTask lifecycle check requires EMCP_STASK_WORKER_CMD and EMCP_STASK_WORKER_CWD.");
+            }
+
+            $lifecycleKey = 'runtime-k-lifecycle';
+            $dispatchLifecycleStart = httpPostJson($dispatchUrl, [
+                'jsonrpc' => '2.0',
+                'id' => 'dl1',
+                'method' => 'tools/call',
+                'params' => [
+                    'name' => 'evo.content.search',
+                    'arguments' => ['limit' => 1, 'offset' => 0],
+                ],
+            ], array_merge($callHeaders, ['Idempotency-Key: ' . $lifecycleKey]));
+
+            if (!in_array($dispatchLifecycleStart['status'], [200, 202], true)) {
+                fail("{$label} sTask lifecycle start expected 200/202, got {$dispatchLifecycleStart['status']}.");
+            }
+
+            $dispatchLifecycleStartJson = decodeJson($dispatchLifecycleStart['body']);
+            $dispatchLifecycleTaskId = is_numeric($dispatchLifecycleStartJson['task_id'] ?? null)
+                ? (int)$dispatchLifecycleStartJson['task_id']
+                : 0;
+
+            if ($dispatchLifecycleTaskId < 1) {
+                fail("{$label} sTask lifecycle expected async task_id > 0, got " . (string)($dispatchLifecycleStartJson['task_id'] ?? 'null') . '.');
+            }
+
+            $workerRun = runShellCommand($staskWorkerCommand, $staskWorkerCwd);
+            if ($workerRun['exit'] !== 0) {
+                fail("{$label} sTask worker command failed (exit {$workerRun['exit']}): " . $workerRun['output']);
+            }
+
+            $completed = false;
+            for ($i = 1; $i <= $staskPollAttempts; $i++) {
+                $dispatchLifecycleAfter = httpPostJson($dispatchUrl, [
+                    'jsonrpc' => '2.0',
+                    'id' => 'dl2-' . $i,
+                    'method' => 'tools/call',
+                    'params' => [
+                        'name' => 'evo.content.search',
+                        'arguments' => ['limit' => 1, 'offset' => 0],
+                    ],
+                ], array_merge($callHeaders, ['Idempotency-Key: ' . $lifecycleKey]));
+
+                if (!in_array($dispatchLifecycleAfter['status'], [200, 202], true)) {
+                    fail("{$label} sTask lifecycle reuse expected 200/202, got {$dispatchLifecycleAfter['status']}.");
+                }
+
+                $dispatchLifecycleAfterJson = decodeJson($dispatchLifecycleAfter['body']);
+                if (($dispatchLifecycleAfterJson['reused'] ?? null) !== true) {
+                    fail("{$label} sTask lifecycle reuse must return reused=true.");
+                }
+
+                $lifecycleStatus = trim((string)($dispatchLifecycleAfterJson['status'] ?? ''));
+                if ($lifecycleStatus === 'completed') {
+                    $result = $dispatchLifecycleAfterJson['result'] ?? null;
+                    if (!is_array($result)) {
+                        fail("{$label} sTask lifecycle completed response missing result payload.");
+                    }
+                    $completed = true;
+                    break;
+                }
+
+                usleep(300000);
+            }
+
+            if (!$completed) {
+                fail("{$label} sTask lifecycle did not reach completed status after {$staskPollAttempts} polls.");
+            }
         }
     }
 
