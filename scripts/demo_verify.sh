@@ -15,11 +15,22 @@ DEMO_ADMIN_USERNAME=${DEMO_ADMIN_USERNAME:-admin}
 DEMO_ADMIN_PASSWORD=${DEMO_ADMIN_PASSWORD:-123456}
 EMCP_SERVER_HANDLE=${EMCP_SERVER_HANDLE:-content}
 EMCP_DISPATCH_CHECK=${EMCP_DISPATCH_CHECK:-1}
-SAPI_JWT_SECRET=${SAPI_JWT_SECRET:-emcp-demo-secret}
+SAPI_JWT_SECRET=${SAPI_JWT_SECRET:-emcp-demo-secret-0123456789abcdef0123456789abcdef}
 SAPI_BASE_PATH=${SAPI_BASE_PATH:-api}
 SAPI_VERSION=${SAPI_VERSION:-v1}
 SERVER_LOG=${SERVER_LOG:-/tmp/emcp-demo-php-server.log}
 SERVER_PID=
+
+if [ "${#SAPI_JWT_SECRET}" -lt 32 ]; then
+  echo "[demo-verify] SAPI_JWT_SECRET is shorter than 32 chars; using SHA-256 normalized secret for compatibility."
+  SAPI_JWT_SECRET=$(printf '%s' "${SAPI_JWT_SECRET}" | php -r '
+$secret = stream_get_contents(STDIN);
+if (!is_string($secret) || $secret === "") {
+    $secret = "emcp-demo-secret";
+}
+echo hash("sha256", $secret);
+')
+fi
 
 case "${DEMO_DIR}" in
   /*) DEMO_DIR_PATH="${DEMO_DIR}" ;;

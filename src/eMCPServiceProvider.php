@@ -115,6 +115,16 @@ class eMCPServiceProvider extends ServiceProvider
     {
         $router = $this->app->router;
 
+        // Compatibility fallback for environments where "web" middleware group
+        // is not pre-registered (required by sApi routes).
+        $router->middlewareGroup('web', (array)config('app.middleware.web', []));
+
+        // Compatibility fallback: some sApi builds define "sapi.access" in routes
+        // but don't register its middleware alias in the service provider.
+        if (class_exists(\Seiger\sApi\Http\Middleware\ApiAccessLogMiddleware::class)) {
+            $router->aliasMiddleware('sapi.access', \Seiger\sApi\Http\Middleware\ApiAccessLogMiddleware::class);
+        }
+
         $router->aliasMiddleware('emcp.permission', EnsureMcpPermission::class);
         $router->aliasMiddleware('emcp.jwt', EnsureApiJwt::class);
         $router->aliasMiddleware('emcp.scope', EnsureMcpScopes::class);
