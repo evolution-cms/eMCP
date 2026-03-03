@@ -10,6 +10,21 @@
 - `SPEC.md` визначає технічні MUST/SHOULD контракти реалізації.
 - `TOOLSET.md` визначає публічний контракт tool names/params/responses/errors.
 
+## 0.1 Поточний статус delivery (as of 2026-03-03)
+Підтверджений стан у workspace:
+- `make demo-all` проходить end-to-end у `demo`.
+- Інсталяційний pipeline (`install/publish/migrate`) проходить стабільно.
+- `php artisan emcp:test` (`initialize`, `tools/list`) -> PASS.
+- Runtime HTTP integration (`tests/Integration/RuntimeIntegrationHttpTest.php`) -> PASS.
+- Підтверджено API шлях читання даних з БД через MCP (`evo.content.search`, `evo.content.root_tree`, `evo.content.get`).
+- Автоматично генерується `demo/logs.md` з деталями токена, MCP запитів/відповідей і manual-check командами.
+
+Залишок до RC-1 (core platform hardening):
+- live runtime integration job у GitHub Actions зі staging env/secrets;
+- live async checks для `sTask` (progress/result/retry/failover);
+- live stream/rate-limit операційні перевірки;
+- зафіксовані RC evidence артефакти (security sanity + performance baseline).
+
 ## 1. Контекст
 - Цільовий пакет: `eMCP` у `/Users/dmi3yy/PhpstormProjects/Extras/eMCP`.
 - Upstream MCP SDK: `/Users/dmi3yy/PhpstormProjects/Extras/LaravelMcp` (`laravel/mcp`).

@@ -237,6 +237,9 @@ make demo-all
 ```
 
 This target installs demo Evo, starts `php -S`, issues sApi JWT, runs `php artisan emcp:test`, then runs `composer run test` with HTTP runtime integration enabled.
+After run, detailed evidence is written to:
+- `demo/logs.md` (token/masked auth info, MCP request payloads, HTTP statuses, responses, manual verification commands)
+- `/tmp/emcp-demo-php-server.log` (php built-in server log)
 
 If GitHub API auth is needed during install, pass token via ENV (same pattern as `evolution`):
 
@@ -245,6 +248,25 @@ GITHUB_PAT=ghp_xxx make demo-all
 ```
 
 Fallback ENV names are also supported: `GITHUB_TOKEN`, `GH_TOKEN`.
+
+Manual content-read MCP examples (same calls used in `demo/logs.md`):
+
+```bash
+# list tools
+curl -sS -H 'Content-Type: application/json' -H 'Authorization: Bearer <TOKEN>' \
+  -d '{"jsonrpc":"2.0","id":"tools-1","method":"tools/list","params":{}}' \
+  'http://127.0.0.1:8787/api/v1/mcp/content'
+
+# read content slice from DB
+curl -sS -H 'Content-Type: application/json' -H 'Authorization: Bearer <TOKEN>' \
+  -d '{"jsonrpc":"2.0","id":"search-1","method":"tools/call","params":{"name":"evo.content.search","arguments":{"limit":3,"offset":0}}}' \
+  'http://127.0.0.1:8787/api/v1/mcp/content'
+
+# read one document
+curl -sS -H 'Content-Type: application/json' -H 'Authorization: Bearer <TOKEN>' \
+  -d '{"jsonrpc":"2.0","id":"get-1","method":"tools/call","params":{"name":"evo.content.get","arguments":{"id":1}}}' \
+  'http://127.0.0.1:8787/api/v1/mcp/content'
+```
 
 Optional runtime integration check (against deployed environment):
 

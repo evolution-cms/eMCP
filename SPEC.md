@@ -5,12 +5,24 @@
 
 Status markers:
 - `SPEC Version`: `1.0-contract`
-- `Runtime Status`: `Gate C baseline implemented (full validation pending)`
+- `Runtime Status`: `Gate C baseline validated in demo runtime; RC-1 hardening pending`
 
 Normative hierarchy:
 - `SPEC.md` defines platform-wide MUST/SHOULD rules.
 - `TOOLSET.md` defines canonical public tool contract (`evo.content.*`, `evo.model.*`).
 - `DOCS*.md` are implementation and usage guides; if conflict occurs, `SPEC.md` + `TOOLSET.md` win.
+
+Current validation snapshot (2026-03-03):
+- `make demo-all` PASS (install + smoke + runtime integration).
+- `php artisan emcp:test` PASS for `initialize` and `tools/list`.
+- Runtime HTTP integration PASS for `/api/v1/mcp/{server}`.
+- Verified content-read tool flow in runtime (`evo.content.search`, `evo.content.root_tree`, `evo.content.get`).
+- One-click verification writes `demo/logs.md` with request/response evidence.
+
+Open RC-1 validation scope:
+- live CI runtime integration (external env/secrets) is not yet mandatory-on-push;
+- live async `sTask` e2e checks (queue lifecycle/progress/failover) are not yet enforced in CI;
+- live stream/rate-limit infra checks remain pending as RC evidence.
 
 ## 0. Джерела
 - `/Users/dmi3yy/PhpstormProjects/Extras/LaravelMcp` — upstream `laravel/mcp`.

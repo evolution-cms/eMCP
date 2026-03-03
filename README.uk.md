@@ -236,6 +236,9 @@ make demo-all
 ```
 
 Ця ціль встановлює demo Evo, запускає `php -S`, видає sApi JWT, виконує `php artisan emcp:test`, а потім `composer run test` з увімкненою HTTP runtime integration перевіркою.
+Після виконання детальні докази записуються у:
+- `demo/logs.md` (masked token, MCP payload-и, HTTP статуси, відповіді, manual verification команди)
+- `/tmp/emcp-demo-php-server.log` (лог PHP built-in server)
 
 Якщо під час інсталяції потрібна GitHub авторизація API, передай токен через ENV (як у `evolution`):
 
@@ -244,6 +247,25 @@ GITHUB_PAT=ghp_xxx make demo-all
 ```
 
 Також підтримуються `GITHUB_TOKEN` і `GH_TOKEN`.
+
+Ручні приклади MCP читання content (ті самі виклики, що пишуться у `demo/logs.md`):
+
+```bash
+# список tools
+curl -sS -H 'Content-Type: application/json' -H 'Authorization: Bearer <TOKEN>' \
+  -d '{"jsonrpc":"2.0","id":"tools-1","method":"tools/list","params":{}}' \
+  'http://127.0.0.1:8787/api/v1/mcp/content'
+
+# читання content з БД
+curl -sS -H 'Content-Type: application/json' -H 'Authorization: Bearer <TOKEN>' \
+  -d '{"jsonrpc":"2.0","id":"search-1","method":"tools/call","params":{"name":"evo.content.search","arguments":{"limit":3,"offset":0}}}' \
+  'http://127.0.0.1:8787/api/v1/mcp/content'
+
+# читання одного документа
+curl -sS -H 'Content-Type: application/json' -H 'Authorization: Bearer <TOKEN>' \
+  -d '{"jsonrpc":"2.0","id":"get-1","method":"tools/call","params":{"name":"evo.content.get","arguments":{"id":1}}}' \
+  'http://127.0.0.1:8787/api/v1/mcp/content'
+```
 
 Опційна runtime integration перевірка (проти розгорнутого середовища):
 
