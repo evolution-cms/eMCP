@@ -109,9 +109,9 @@ class ContentSiblingsTool extends BaseContentTool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'id' => $schema->integer()->minimum(1)->required(),
-            'limit' => $schema->integer()->minimum(1)->required(),
-            'offset' => $schema->integer()->minimum(0)->nullable(),
+            'id' => $schema->integer()->min(1)->required(),
+            'limit' => $schema->integer()->min(1)->required(),
+            'offset' => $schema->integer()->min(0)->nullable(),
         ];
     }
 }

@@ -238,6 +238,14 @@ make demo-all
 
 This target installs demo Evo, starts `php -S`, issues sApi JWT, runs `php artisan emcp:test`, then runs `composer run test` with HTTP runtime integration enabled.
 
+If GitHub API auth is needed during install, pass token via ENV (same pattern as `evolution`):
+
+```bash
+GITHUB_PAT=ghp_xxx make demo-all
+```
+
+Fallback ENV names are also supported: `GITHUB_TOKEN`, `GH_TOKEN`.
+
 Optional runtime integration check (against deployed environment):
 
 ```bash

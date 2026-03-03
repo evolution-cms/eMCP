@@ -31,6 +31,11 @@ EMCP_PATH_REPO ?= $(CURDIR)
 
 demo:
 	@set -eu; \
+	GH_TOKEN_VALUE="$${GITHUB_PAT:-$${GITHUB_TOKEN:-$${GH_TOKEN:-}}}"; \
+	if [ -n "$${GH_TOKEN_VALUE}" ]; then \
+		export COMPOSER_AUTH="$$(printf '{"github-oauth":{"github.com":"%s"}}' "$${GH_TOKEN_VALUE}")"; \
+		echo "Using GitHub token from ENV (GITHUB_PAT/GITHUB_TOKEN/GH_TOKEN)."; \
+	fi; \
 	command -v "$(EVO_BIN)" >/dev/null 2>&1 || { \
 		echo "Error: command '$(EVO_BIN)' not found. Install installer first: composer global require evolution-cms/installer"; \
 		exit 1; \

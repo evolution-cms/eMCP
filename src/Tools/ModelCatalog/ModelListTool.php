@@ -109,8 +109,8 @@ class ModelListTool extends BaseModelTool
     {
         return [
             'model' => $schema->string()->required(),
-            'limit' => $schema->integer()->minimum(1)->required(),
-            'offset' => $schema->integer()->minimum(0)->nullable(),
+            'limit' => $schema->integer()->min(1)->required(),
+            'offset' => $schema->integer()->min(0)->nullable(),
             'order_by' => $schema->string()->nullable(),
             'order_dir' => $schema->string()->nullable(),
         ];

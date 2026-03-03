@@ -84,7 +84,7 @@ class ContentGetTool extends BaseContentTool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'id' => $schema->integer()->minimum(1)->required(),
+            'id' => $schema->integer()->min(1)->required(),
         ];
     }
 }

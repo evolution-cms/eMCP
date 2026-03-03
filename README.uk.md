@@ -237,6 +237,14 @@ make demo-all
 
 Ця ціль встановлює demo Evo, запускає `php -S`, видає sApi JWT, виконує `php artisan emcp:test`, а потім `composer run test` з увімкненою HTTP runtime integration перевіркою.
 
+Якщо під час інсталяції потрібна GitHub авторизація API, передай токен через ENV (як у `evolution`):
+
+```bash
+GITHUB_PAT=ghp_xxx make demo-all
+```
+
+Також підтримуються `GITHUB_TOKEN` і `GH_TOKEN`.
+
 Опційна runtime integration перевірка (проти розгорнутого середовища):
 
 ```bash

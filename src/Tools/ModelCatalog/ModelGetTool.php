@@ -86,7 +86,7 @@ class ModelGetTool extends BaseModelTool
     {
         return [
             'model' => $schema->string()->required(),
-            'id' => $schema->integer()->minimum(1)->required(),
+            'id' => $schema->integer()->min(1)->required(),
         ];
     }
 }

@@ -169,10 +169,10 @@ class ContentSearchTool extends BaseContentTool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'limit' => $schema->integer()->minimum(1),
-            'offset' => $schema->integer()->minimum(0)->nullable(),
-            'parent' => $schema->integer()->minimum(0)->nullable(),
-            'depth' => $schema->integer()->minimum(1)->nullable(),
+            'limit' => $schema->integer()->min(1),
+            'offset' => $schema->integer()->min(0)->nullable(),
+            'parent' => $schema->integer()->min(0)->nullable(),
+            'depth' => $schema->integer()->min(1)->nullable(),
             'order_by' => $schema->string()->nullable(),
             'order_dir' => $schema->string()->nullable(),
             'order_by_date' => $schema->string()->nullable(),
