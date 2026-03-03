@@ -379,6 +379,7 @@ if ($rateProbeMaxAttempts < 1) {
     $rateProbeMaxAttempts = 90;
 }
 $runStaskLifecycleCheck = getenv('EMCP_STASK_LIFECYCLE_CHECK') === '1';
+$staskExpectExternalWorker = getenv('EMCP_STASK_EXPECT_EXTERNAL_WORKER') === '1';
 $staskWorkerCommand = trim((string)getenv('EMCP_STASK_WORKER_CMD'));
 $staskWorkerCwd = trim((string)getenv('EMCP_STASK_WORKER_CWD'));
 $staskPollAttempts = (int)getenv('EMCP_STASK_POLL_ATTEMPTS');
@@ -760,7 +761,8 @@ foreach ($targets as $target) {
 
     if ($runDispatchCheck) {
         $dispatchUrl = rtrim($url, '/') . '/dispatch';
-        $key = 'runtime-k1';
+        $runKey = bin2hex(random_bytes(6));
+        $key = 'runtime-k1-' . $runKey;
 
         $dispatchA = httpPostJson($dispatchUrl, [
             'jsonrpc' => '2.0',
@@ -836,11 +838,11 @@ foreach ($targets as $target) {
         }
 
         if ($runStaskLifecycleCheck && $label === 'api') {
-            if ($staskWorkerCommand === '' || $staskWorkerCwd === '') {
-                fail("{$label} sTask lifecycle check requires EMCP_STASK_WORKER_CMD and EMCP_STASK_WORKER_CWD.");
+            if (!$staskExpectExternalWorker && ($staskWorkerCommand === '' || $staskWorkerCwd === '')) {
+                fail("{$label} sTask lifecycle check requires EMCP_STASK_WORKER_CMD and EMCP_STASK_WORKER_CWD, or EMCP_STASK_EXPECT_EXTERNAL_WORKER=1.");
             }
 
-            $lifecycleKey = 'runtime-k-lifecycle';
+            $lifecycleKey = 'runtime-k-lifecycle-' . $runKey;
             $dispatchLifecycleStart = httpPostJson($dispatchUrl, [
                 'jsonrpc' => '2.0',
                 'id' => 'dl1',
@@ -864,9 +866,14 @@ foreach ($targets as $target) {
                 fail("{$label} sTask lifecycle expected async task_id > 0, got " . (string)($dispatchLifecycleStartJson['task_id'] ?? 'null') . '.');
             }
 
-            $workerRun = runShellCommand($staskWorkerCommand, $staskWorkerCwd);
-            if ($workerRun['exit'] !== 0) {
-                fail("{$label} sTask worker command failed (exit {$workerRun['exit']}): " . $workerRun['output']);
+            if ($staskExpectExternalWorker) {
+                info("{$label} sTask lifecycle check: expecting external worker processing.");
+                usleep(700000);
+            } else {
+                $workerRun = runShellCommand($staskWorkerCommand, $staskWorkerCwd);
+                if ($workerRun['exit'] !== 0) {
+                    fail("{$label} sTask worker command failed (exit {$workerRun['exit']}): " . $workerRun['output']);
+                }
             }
 
             $completed = false;

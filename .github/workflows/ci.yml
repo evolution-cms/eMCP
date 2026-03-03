@@ -166,6 +166,16 @@ jobs:
       EMCP_MANAGER_PATH: ${{ secrets.EMCP_MANAGER_PATH }}
       EMCP_MANAGER_COOKIE: ${{ secrets.EMCP_MANAGER_COOKIE }}
       EMCP_DISPATCH_CHECK: ${{ secrets.EMCP_DISPATCH_CHECK }}
+      EMCP_RUNTIME_NEGATIVE: ${{ secrets.EMCP_RUNTIME_NEGATIVE }}
+      EMCP_RUNTIME_MODEL_SANITY: ${{ secrets.EMCP_RUNTIME_MODEL_SANITY }}
+      EMCP_RUNTIME_NEGATIVE_REQUIRE_RATE_LIMIT: ${{ secrets.EMCP_RUNTIME_NEGATIVE_REQUIRE_RATE_LIMIT }}
+      EMCP_TEST_JWT_SECRET: ${{ secrets.EMCP_TEST_JWT_SECRET }}
+      EMCP_TEST_JWT_READ_TOKEN: ${{ secrets.EMCP_TEST_JWT_READ_TOKEN }}
+      EMCP_STASK_LIFECYCLE_CHECK: ${{ secrets.EMCP_STASK_LIFECYCLE_CHECK }}
+      EMCP_STASK_EXPECT_EXTERNAL_WORKER: ${{ secrets.EMCP_STASK_EXPECT_EXTERNAL_WORKER }}
+      EMCP_STASK_WORKER_CMD: ${{ secrets.EMCP_STASK_WORKER_CMD }}
+      EMCP_STASK_WORKER_CWD: ${{ secrets.EMCP_STASK_WORKER_CWD }}
+      EMCP_STASK_POLL_ATTEMPTS: ${{ secrets.EMCP_STASK_POLL_ATTEMPTS }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -192,6 +202,15 @@ jobs:
           if [ -n "$missing" ]; then
             echo "Missing required secrets/env for runtime integration:$missing" >&2
             exit 1
+          fi
+
+          lifecycle="${EMCP_STASK_LIFECYCLE_CHECK:-0}"
+          external_worker="${EMCP_STASK_EXPECT_EXTERNAL_WORKER:-0}"
+          if [ "$lifecycle" = "1" ] && [ "$external_worker" != "1" ]; then
+            if [ -z "${EMCP_STASK_WORKER_CMD:-}" ] || [ -z "${EMCP_STASK_WORKER_CWD:-}" ]; then
+              echo "EMCP_STASK_LIFECYCLE_CHECK=1 requires EMCP_STASK_EXPECT_EXTERNAL_WORKER=1 or both EMCP_STASK_WORKER_CMD and EMCP_STASK_WORKER_CWD." >&2
+              exit 1
+            fi
           fi
 
       - name: Runtime integration checks

@@ -24,6 +24,7 @@ Current validation snapshot (2026-03-03):
 - Streaming policy now enforces proxy/FPM-safe SSE headers (`Content-Type: text/event-stream`, `Cache-Control: no-cache, no-transform`, `X-Accel-Buffering: no`) with dedicated tests.
 - CI includes migration matrix automation for `sqlite/mysql/pgsql`.
 - CI/check flow now produces reproducible benchmark and leaderboard artifacts.
+- Live runtime integration harness now supports secret-controlled hardening probes: negative transport checks, model-safety sanity, and optional `sTask` lifecycle verification with external-worker mode.
 
 Open RC-1 validation scope:
 - live CI runtime integration jobs are wired for `release/*` pushes (`demo-runtime-proof`, `runtime-integration`), but branch-protection required-check enforcement must be configured in repository settings;

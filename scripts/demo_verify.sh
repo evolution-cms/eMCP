@@ -409,6 +409,9 @@ dispatch_payload_a='{"jsonrpc":"2.0","id":"d1-doc","method":"tools/call","params
 dispatch_payload_b='{"jsonrpc":"2.0","id":"d2-doc","method":"tools/call","params":{"name":"evo.content.search","arguments":{"limit":2,"offset":0}}}'
 dispatch_url="${mcp_url}/dispatch"
 rate_limit_identity_type='api:jwt (sapi.jwt.user_id/sapi.jwt.sub; fallback ip)'
+dispatch_key_run="demo-verify-$(date +%s)-$$"
+dispatch_key_main="${dispatch_key_run}-k1"
+dispatch_key_lifecycle="${dispatch_key_run}-k2"
 
 unauth_headers_file="${TMP_DIR}/unauth.headers"
 unauth_raw=$(curl -sS -D "${unauth_headers_file}" \
@@ -476,21 +479,21 @@ oversized_http_code=$(printf '%s' "${oversized_raw}" | sed -n 's/^__HTTP_CODE__:
 oversized_response=$(printf '%s' "${oversized_raw}" | sed '/^__HTTP_CODE__:/d')
 
 dispatch_a_headers="${TMP_DIR}/dispatch-a.headers"
-dispatch_a_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${dispatch_payload_a}" "${dispatch_a_headers}" "Idempotency-Key: demo-verify-k1" "${dispatch_url}")
+dispatch_a_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${dispatch_payload_a}" "${dispatch_a_headers}" "Idempotency-Key: ${dispatch_key_main}" "${dispatch_url}")
 dispatch_a_http_code=$(printf '%s' "${dispatch_a_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
 dispatch_a_response=$(printf '%s' "${dispatch_a_raw}" | sed '/^__HTTP_CODE__:/d')
 
 dispatch_reuse_headers="${TMP_DIR}/dispatch-reuse.headers"
-dispatch_reuse_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${dispatch_payload_a}" "${dispatch_reuse_headers}" "Idempotency-Key: demo-verify-k1" "${dispatch_url}")
+dispatch_reuse_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${dispatch_payload_a}" "${dispatch_reuse_headers}" "Idempotency-Key: ${dispatch_key_main}" "${dispatch_url}")
 dispatch_reuse_http_code=$(printf '%s' "${dispatch_reuse_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
 dispatch_reuse_response=$(printf '%s' "${dispatch_reuse_raw}" | sed '/^__HTTP_CODE__:/d')
 
 dispatch_conflict_headers="${TMP_DIR}/dispatch-conflict.headers"
-dispatch_conflict_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${dispatch_payload_b}" "${dispatch_conflict_headers}" "Idempotency-Key: demo-verify-k1" "${dispatch_url}")
+dispatch_conflict_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${dispatch_payload_b}" "${dispatch_conflict_headers}" "Idempotency-Key: ${dispatch_key_main}" "${dispatch_url}")
 dispatch_conflict_http_code=$(printf '%s' "${dispatch_conflict_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
 dispatch_conflict_response=$(printf '%s' "${dispatch_conflict_raw}" | sed '/^__HTTP_CODE__:/d')
 
-dispatch_lifecycle_key='demo-verify-k2'
+dispatch_lifecycle_key="${dispatch_key_lifecycle}"
 dispatch_lifecycle_start_headers="${TMP_DIR}/dispatch-lifecycle-start.headers"
 dispatch_lifecycle_start_raw=$(mcp_post_with_token_optional_session "${probe_token}" "${dispatch_payload_a}" "${dispatch_lifecycle_start_headers}" "Idempotency-Key: ${dispatch_lifecycle_key}" "${dispatch_url}")
 dispatch_lifecycle_start_http_code=$(printf '%s' "${dispatch_lifecycle_start_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)

@@ -204,3 +204,16 @@ composer run test:integration:runtime
 Optional manager checks:
 - add `EMCP_MANAGER_PATH` and `EMCP_MANAGER_COOKIE`.
 - if both API and manager credentials are provided, script validates both paths.
+
+Optional hardening checks:
+- set `EMCP_RUNTIME_NEGATIVE=1` for 401/403/413/415/429 probes.
+- set `EMCP_RUNTIME_MODEL_SANITY=1` for `evo.model.get(User)` leakage sanity.
+- set `EMCP_RUNTIME_NEGATIVE_REQUIRE_RATE_LIMIT=1` to fail if 429 is not observed.
+
+Optional live sTask lifecycle proof:
+- enable with `EMCP_STASK_LIFECYCLE_CHECK=1`.
+- if target env has its own worker, also set `EMCP_STASK_EXPECT_EXTERNAL_WORKER=1`.
+- if worker must be started by the test host, set:
+  - `EMCP_STASK_WORKER_CMD="php artisan stask:worker"`
+  - `EMCP_STASK_WORKER_CWD="/path/to/evo/core"`
+  - optional `EMCP_STASK_POLL_ATTEMPTS` (default: `20`).

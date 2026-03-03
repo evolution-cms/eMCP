@@ -20,6 +20,8 @@ $requiredSnippets = [
     'runtime-integration:',
     'demo-runtime-proof:',
     'migration-matrix:',
+    'EMCP_STASK_LIFECYCLE_CHECK',
+    'EMCP_STASK_EXPECT_EXTERNAL_WORKER',
     'benchmark-artifacts',
     'composer run test:integration:clean-install',
     'scripts/migration_matrix_check.sh sqlite',

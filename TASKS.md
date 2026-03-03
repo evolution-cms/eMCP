@@ -234,6 +234,7 @@ DoD:
 - [x] Integration tests for manager/API MCP endpoints.
 - [x] Add runtime integration harness script for manager/API/dispatch verification against deployed environment.
 - [x] Add release-branch CI runtime jobs (`demo-runtime-proof`, `runtime-integration`) with artifacts (`demo/logs.md`, `runtime-live.log`).
+- [x] Wire secret-controlled live runtime hardening probes (`negative`, `model sanity`, optional `sTask lifecycle`) in `runtime-integration` job.
 - [ ] Configure repository branch protection to require `demo-runtime-proof` and `runtime-integration` on `release/*`.
 - [x] Streaming tests under typical PHP-FPM constraints.
 - [x] Async tests for `sTask` path and failover.

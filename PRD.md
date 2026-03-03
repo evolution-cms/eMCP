@@ -25,6 +25,7 @@
 - Додано clean-install validation script (`scripts/clean_install_validation.sh`) і інтеграцію в `demo-runtime-proof`.
 - Додано reproducible simulation benchmark suite + leaderboard artifacts (`scripts/benchmark/*`, `build/benchmarks/*`).
 - Додано optional advanced tree tools (`neighbors`, `prev/next siblings`, `children/siblings range`) з контрактними та runtime перевірками.
+- Додано secret-controlled live hardening probes у `runtime-integration` (negative checks, model sanity, optional `sTask` lifecycle з external-worker режимом).
 
 Залишок до RC-1 (core platform hardening):
 - branch protection required-check enforcement для CI runtime jobs (`demo-runtime-proof`, `runtime-integration`) на `release/*`;
