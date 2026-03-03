@@ -12,8 +12,9 @@
         "evo.model.get"
     ],
     "spec_version": "1.0-contract",
-    "runtime_status": "Gate C baseline implemented (full validation pending)",
+    "runtime_status": "Gate C baseline validated in demo runtime; RC-1 hardening pending",
     "spec_public_contract_hash": "752772e83d65c41fe55bd6ddef3359a8ab04f0e3efe67d4901e79870d1967e7b",
     "model_allowlists_hash": "2e27381b6120a53f4adb6da3649fcc5319530da4f6e41063d7b7b0700d600731",
-    "updated_at": "2026-03-02T14:48:22+00:00"
+    "golden_fixtures_hash": "d015d5fdab8c8f2f5267cdf47046e6580c730edc7c50cc4515eb4dfd2265c147",
+    "updated_at": "2026-03-03T06:15:17+00:00"
 }

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "episode-incident-001",
+    "scenario": "High-priority incident with strict SLA",
+    "metrics": {
+      "baseline": {"success": 1, "policy_violations": 2, "latency_ms": 1850, "retries": 1},
+      "planner": {"success": 1, "policy_violations": 0, "latency_ms": 1210, "retries": 0}
+    }
+  },
+  {
+    "id": "episode-regulatory-002",
+    "scenario": "Regulatory gate with approval path",
+    "metrics": {
+      "baseline": {"success": 1, "policy_violations": 1, "latency_ms": 2240, "retries": 2},
+      "planner": {"success": 1, "policy_violations": 0, "latency_ms": 1660, "retries": 1}
+    }
+  },
+  {
+    "id": "episode-capacity-003",
+    "scenario": "Resource contention under limited capacity",
+    "metrics": {
+      "baseline": {"success": 0, "policy_violations": 2, "latency_ms": 2410, "retries": 2},
+      "planner": {"success": 1, "policy_violations": 0, "latency_ms": 1830, "retries": 1}
+    }
+  },
+  {
+    "id": "episode-risk-zone-004",
+    "scenario": "Risk-zone routing with guardrails",
+    "metrics": {
+      "baseline": {"success": 1, "policy_violations": 1, "latency_ms": 1710, "retries": 1},
+      "planner": {"success": 1, "policy_violations": 0, "latency_ms": 1390, "retries": 0}
+    }
+  },
+  {
+    "id": "episode-drift-005",
+    "scenario": "Policy drift scenario requiring corrective action",
+    "metrics": {
+      "baseline": {"success": 0, "policy_violations": 3, "latency_ms": 2680, "retries": 3},
+      "planner": {"success": 1, "policy_violations": 0, "latency_ms": 1920, "retries": 1}
+    }
+  }
+]

@@ -6,8 +6,8 @@
 - Keep core runtime orchestration-agnostic until RC-1 completion.
 
 ## Phase -1 — Pre-flight Spikes
-- [ ] Validate provider interception viability without `class_alias` (container/provider replacement spike).
-- [ ] Run upstream adapter smoke against current `laravel/mcp` window (`^0.5.x`).
+- [x] Validate provider interception viability without `class_alias` (container/provider replacement spike).
+- [x] Run upstream adapter smoke against current `laravel/mcp` window (`^0.5.x`).
 
 Artifacts:
 - spike report (`docs/spikes/provider-interception.md`)
@@ -192,7 +192,7 @@ Goal: production-grade controls and observability.
 - [x] Add server allowlist and tool denylist enforcement.
 - [x] Enforce sensitive-field exclusion for user/auth-related model tools.
 - [x] Add write-tools feature flag (`security.enable_write_tools=false` by default).
-- [ ] Add threat-focused tests (ACL/scopes/redaction).
+- [x] Add threat-focused tests (ACL/scopes/redaction).
 
 Artifacts:
 - `src/Support/Redactor.php`
@@ -211,9 +211,9 @@ DoD:
 - [x] Add `emcp:test` smoke command.
 - [x] Add `emcp:list-servers` diagnostics command.
 - [x] Add `emcp:sync-workers` maintenance command.
-- [ ] Add advanced tree tools (`neighbors`, `prev/next siblings`, `children/siblings range`) if required by dAi scenarios.
+- [x] Add advanced tree tools (`neighbors`, `prev/next siblings`, `children/siblings range`) if required by dAi scenarios.
 - [x] Add "internal + external in 5 minutes" quickstart docs with one canonical example server/tool.
-- [ ] Add profile-based docs presets (`manager-only`, `api-only`, `hybrid`) for simpler onboarding.
+- [x] Add profile-based docs presets (`manager-only`, `api-only`, `hybrid`) for simpler onboarding.
 - [x] Add explicit ecosystem interop runbook (`sApi` + `sTask` + `eAi/dAi` consumer path).
 
 Artifacts:
@@ -228,36 +228,37 @@ DoD:
 - Optional advanced tree tools are available when enabled by scope.
 
 ## Phase 6 — Full Test and Release
-- [ ] Unit tests for registry, scope policy, redaction.
+- [x] Unit tests for registry, scope policy, redaction.
 - [x] Baseline unit tests for `Redactor` and `SecurityPolicy`.
 - [x] Baseline unit test for model allowlist leakage (sensitive fields never exposed).
-- [ ] Integration tests for manager/API MCP endpoints.
+- [x] Integration tests for manager/API MCP endpoints.
 - [x] Add runtime integration harness script for manager/API/dispatch verification against deployed environment.
 - [x] Add release-branch CI runtime jobs (`demo-runtime-proof`, `runtime-integration`) with artifacts (`demo/logs.md`, `runtime-live.log`).
 - [ ] Configure repository branch protection to require `demo-runtime-proof` and `runtime-integration` on `release/*`.
-- [ ] Streaming tests under typical PHP-FPM constraints.
-- [ ] Async tests for `sTask` path and failover.
+- [x] Streaming tests under typical PHP-FPM constraints.
+- [x] Async tests for `sTask` path and failover.
 - [x] Add local demo `sTask` lifecycle proof in `demo/logs.md` (`queued -> completed`) using `php artisan stask:worker`.
 - [x] Baseline feature-behavior test for dispatch idempotency semantics (`reuse` and `409 conflict`) with policy deny path.
-- [ ] Functional tests for `SiteContent` tree/TV tool contracts.
-- [ ] Security tests for forbidden fields and invalid TV operators/casts.
+- [x] Functional tests for `SiteContent` tree/TV tool contracts.
+- [x] Security tests for forbidden fields and invalid TV operators/casts.
 - [x] Golden fixture tests for canonical tool responses (`initialize`, `tools/list`, `evo.content.search`, `evo.content.get`).
 - [x] Make golden fixtures versioned and tied to `toolsetVersion`.
 - [x] Enforce governance: fixture change requires version bump and changelog entry.
 - [x] Add CI check that fixture payloads match declared `toolsetVersion`.
-- [ ] If response schema changes, require `MAJOR` or explicit deprecation cycle before merge.
+- [x] If response schema changes, require `MAJOR` or explicit deprecation cycle before merge.
 - [x] Fail CI if canonical TOOLSET tool names changed without SemVer-compatible version bump and changelog entry.
 - [x] Fail CI if `SPEC.md` public-contract stability section changed without explicit spec/version status update.
 - [x] Fail CI if default model field exposure changes without allowlist governance update.
 - [x] Fail CI if default model field exposure changes without governance lock update (allowlist drift guard).
-- [ ] Verify docs/config/commands consistency.
+- [x] Verify docs/config/commands consistency.
 - [x] Add repository CI workflow (`.github/workflows/ci.yml`) with `composer run ci:check`.
-- [ ] Verify migrations up/down on MySQL/PostgreSQL/SQLite.
-- [ ] Run clean install validation and cut first release candidate.
-- [ ] Add closure-table integrity tests (cycle/depth/ancestor-descendant invariants).
-- [ ] Add policy-contract tests for Intent->Task materialization guardrails.
-- [ ] Add reproducible simulation benchmark suite (baseline vs planner strategy).
-- [ ] Add leaderboard report artifact for benchmark runs.
+- [x] Verify migrations up/down on MySQL/PostgreSQL/SQLite.
+- [x] Run clean install validation (automated script + CI runtime proof).
+- [ ] Cut first release candidate tag.
+- [x] Add closure-table integrity tests (cycle/depth/ancestor-descendant invariants).
+- [x] Add policy-contract tests for Intent->Task materialization guardrails.
+- [x] Add reproducible simulation benchmark suite (baseline vs planner strategy).
+- [x] Add leaderboard report artifact for benchmark runs.
 
 Artifacts:
 - `tests/Unit/*`

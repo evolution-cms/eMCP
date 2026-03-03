@@ -195,7 +195,7 @@ This keeps the core declarative and neutral: one MCP foundation for multiple orc
 
 ## Evo Domain Tools
 - Implemented now: `evo.content.search|get|root_tree|descendants|ancestors|children|siblings`
-- Post-MVP: `evo.content.neighbors|prev_siblings|next_siblings|children_range|siblings_range`
+- Optional (implemented): `evo.content.neighbors|prev_siblings|next_siblings|children_range|siblings_range`
 - TV-aware queries via structured `with_tvs`, `tv_filters`, `tv_order`
 - `evo.model.list|get` implemented with per-model explicit allowlist projection and sensitive-field defense-in-depth blacklist
 
@@ -218,6 +218,9 @@ eMCP operational commands:
 - `php artisan emcp:sync-workers`
 - `composer run governance:update-lock`
 - `composer run ci:check`
+- `composer run benchmark:run`
+- `composer run benchmark:leaderboard`
+- `composer run test:integration:clean-install`
 
 ## Repository Checks (for first run in package workspace)
 If you are validating this repository directly:
@@ -226,6 +229,8 @@ If you are validating this repository directly:
 composer run check
 make test
 composer run ci:check
+make benchmark
+make leaderboard
 ```
 
 These checks validate `composer.json` and run PHP syntax lint across package sources.
@@ -282,7 +287,7 @@ composer run test:integration:runtime
 ```
 
 CI release note:
-- `.github/workflows/ci.yml` runs `demo-runtime-proof` and `runtime-integration` on `release/*` pushes.
+- `.github/workflows/ci.yml` runs `demo-runtime-proof`, `runtime-integration`, and `migration-matrix` (`sqlite/mysql/pgsql`) on `release/*` pushes.
 - Configure branch protection to make these jobs required for RC/release merges.
 
 ## Async (sTask-first)

@@ -25,6 +25,7 @@ assertTrue(is_array($lock), 'Governance lock file is not valid JSON.');
 $toolset = governance_parse_toolset($root . '/TOOLSET.md');
 $spec = governance_parse_spec($root . '/SPEC.md');
 $modelHash = governance_model_allowlists_hash($root . '/src/Support/ModelFieldPolicy.php');
+$fixturesHash = governance_golden_fixtures_hash($root . '/tests/Fixtures/golden');
 
 $lockToolsetVersion = trim((string)($lock['toolset_version'] ?? ''));
 assertTrue($lockToolsetVersion !== '', 'Lock missing toolset_version.');
@@ -75,5 +76,26 @@ assertTrue(
     'Model allowlist changed without governance lock update. '
     . 'Update allowlist tests/fixtures and refresh .ci/governance-lock.json'
 );
+
+$lockedFixturesHash = trim((string)($lock['golden_fixtures_hash'] ?? ''));
+assertTrue($lockedFixturesHash !== '', 'Lock missing golden_fixtures_hash.');
+
+if ($fixturesHash !== $lockedFixturesHash) {
+    $currentMajor = governance_major($toolset['toolset_version']);
+    $lockedMajor = governance_major($lockToolsetVersion);
+    $majorBumped = $currentMajor > $lockedMajor;
+
+    $changelogPath = $root . '/CHANGELOG.md';
+    assertTrue(is_file($changelogPath), 'CHANGELOG.md is required when golden fixtures change.');
+    $changelog = file_get_contents($changelogPath);
+    $hasDeprecationCycle = is_string($changelog)
+        && str_contains(strtolower($changelog), 'deprecat')
+        && str_contains($changelog, $toolset['toolset_version']);
+
+    assertTrue(
+        $majorBumped || $hasDeprecationCycle,
+        'Golden response schema changed without MAJOR toolsetVersion bump or explicit deprecation cycle in CHANGELOG.'
+    );
+}
 
 echo "Governance guards passed.\n";

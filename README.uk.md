@@ -194,7 +194,7 @@ eMCP є MCP platform layer для екосистеми Evo:
 
 ## Evo Domain Tools
 - Реалізовано зараз: `evo.content.search|get|root_tree|descendants|ancestors|children|siblings`
-- Post-MVP: `evo.content.neighbors|prev_siblings|next_siblings|children_range|siblings_range`
+- Опційні (вже реалізовані): `evo.content.neighbors|prev_siblings|next_siblings|children_range|siblings_range`
 - TV-aware запити через структуровані `with_tvs`, `tv_filters`, `tv_order`
 - `evo.model.list|get` реалізовано з явним per-model allowlist projection і додатковим sensitive blacklist захистом
 
@@ -217,6 +217,9 @@ php artisan mcp:start content-local
 - `php artisan emcp:sync-workers`
 - `composer run governance:update-lock`
 - `composer run ci:check`
+- `composer run benchmark:run`
+- `composer run benchmark:leaderboard`
+- `composer run test:integration:clean-install`
 
 ## Перевірки репозиторію (для першого запуску у package workspace)
 Якщо перевіряєш цей репозиторій напряму:
@@ -225,6 +228,8 @@ php artisan mcp:start content-local
 composer run check
 make test
 composer run ci:check
+make benchmark
+make leaderboard
 ```
 
 Ці перевірки валідовують `composer.json` і виконують PHP syntax lint по всіх файлах пакета.
@@ -281,7 +286,7 @@ composer run test:integration:runtime
 ```
 
 CI release примітка:
-- `.github/workflows/ci.yml` запускає `demo-runtime-proof` і `runtime-integration` на push у `release/*`.
+- `.github/workflows/ci.yml` запускає `demo-runtime-proof`, `runtime-integration` і `migration-matrix` (`sqlite/mysql/pgsql`) на push у `release/*`.
 - Для RC/release merge треба увімкнути branch protection і позначити ці jobs як required checks.
 
 ## Async через sTask

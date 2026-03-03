@@ -238,6 +238,9 @@ class McpManagerController
         $heartbeatSeconds = $this->resolveHeartbeatSeconds($server);
         $abortOnDisconnect = $this->resolveAbortOnDisconnect($server);
 
+        $response->headers->set('Content-Type', 'text/event-stream');
+        $response->headers->set('Cache-Control', 'no-cache, no-transform');
+        $response->headers->set('X-Accel-Buffering', 'no');
         $response->headers->set('X-eMCP-Stream-Max-Seconds', (string)$maxSeconds);
         $response->headers->set('X-eMCP-Heartbeat-Seconds', (string)$heartbeatSeconds);
 

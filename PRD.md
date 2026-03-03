@@ -19,12 +19,18 @@
 - Підтверджено API шлях читання даних з БД через MCP (`evo.content.search`, `evo.content.root_tree`, `evo.content.get`).
 - Автоматично генерується `demo/logs.md` з деталями токена, MCP запитів/відповідей, manual-check командами і негативними probe-кейсами (`401/403/413/415/409/429`, `evo.model.get(User)` sanity).
 - `demo/logs.md` додатково включає локальний `sTask` lifecycle proof (`queued -> completed`) через `php artisan stask:worker`.
+- Додано RC-hardening test pack у `composer run test`: unit (`ScopePolicy`, `ServerRegistry`), async failover behavior, SiteContent tree/TV contracts, security guardrails, docs/config/commands consistency, upstream adapter smoke.
+- Додано streaming policy hardening для PHP-FPM/proxy (`text/event-stream`, `Cache-Control`, `X-Accel-Buffering`) і тести покриття.
+- Додано migration matrix automation (`sqlite/mysql/pgsql`) у CI та локальний wrapper `scripts/migration_matrix_check.sh`.
+- Додано clean-install validation script (`scripts/clean_install_validation.sh`) і інтеграцію в `demo-runtime-proof`.
+- Додано reproducible simulation benchmark suite + leaderboard artifacts (`scripts/benchmark/*`, `build/benchmarks/*`).
+- Додано optional advanced tree tools (`neighbors`, `prev/next siblings`, `children/siblings range`) з контрактними та runtime перевірками.
 
 Залишок до RC-1 (core platform hardening):
 - branch protection required-check enforcement для CI runtime jobs (`demo-runtime-proof`, `runtime-integration`) на `release/*`;
 - live async checks для `sTask` (progress/result/retry/failover);
-- live stream/rate-limit операційні перевірки;
-- зафіксовані RC evidence артефакти (security sanity + performance baseline).
+- live stream/rate-limit операційні перевірки на зовнішньому target infra;
+- cut first RC tag після approval/checklist gate.
 
 ## 1. Контекст
 - Цільовий пакет: `eMCP` у `/Users/dmi3yy/PhpstormProjects/Extras/eMCP`.
@@ -114,8 +120,8 @@
 
 ### 4.6 Non-Goals For v1 Core Platform
 - Не додавати orchestration-specific persistence (`Intent`, `PolicyCheck`, `EvidenceTrace`, `SimulationEpisode`) у core runtime.
-- Не додавати benchmark/leaderboard suite у core до завершення RC-1.
-- Не розширювати domain toolset beyond canonical profile, поки Gate C + minimal test baseline не закриті.
+- Не додавати non-deterministic benchmark workloads у core до завершення RC-1 (дозволений лише reproducible simulation baseline evidence).
+- Не ламати canonical domain toolset; optional additive tools допускаються тільки без breaking-змін.
 
 ## 5. Сутності
 ### 5.1 Platform Entities
@@ -335,7 +341,7 @@ Extension compliance boundary:
 - FR20: Read-only `evo.model.list|get` with model allowlist.
 - FR21: Sensitive field masking/exclusion for protected entities.
 - FR22: Write-tools disabled-by-default and require explicit multi-gate authorization.
-- FR23: Advanced closure-table tools as post-MVP optional (`neighbors`, `prev/next`, `*_range`).
+- FR23: Advanced closure-table tools as optional additive profile (`neighbors`, `prev/next`, `*_range`).
 - FR24: `initialize` returns mandatory platform metadata.
 - FR25: Official extension points for ecosystem packages.
 - FR26: Per-server runtime policy overrides are supported.

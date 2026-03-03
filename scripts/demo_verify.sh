@@ -202,6 +202,9 @@ tools_list_payload='{"jsonrpc":"2.0","id":"tools-doc","method":"tools/list","par
 content_search_payload='{"jsonrpc":"2.0","id":"search-doc","method":"tools/call","params":{"name":"evo.content.search","arguments":{"limit":3,"offset":0}}}'
 content_root_tree_payload='{"jsonrpc":"2.0","id":"root-doc","method":"tools/call","params":{"name":"evo.content.root_tree","arguments":{"limit":3,"offset":0,"depth":2}}}'
 content_get_payload='{"jsonrpc":"2.0","id":"get-doc","method":"tools/call","params":{"name":"evo.content.get","arguments":{"id":1}}}'
+content_neighbors_payload='{"jsonrpc":"2.0","id":"neighbors-doc","method":"tools/call","params":{"name":"evo.content.neighbors","arguments":{"id":1,"limit":3,"offset":0}}}'
+content_children_range_payload='{"jsonrpc":"2.0","id":"children-range-doc","method":"tools/call","params":{"name":"evo.content.children_range","arguments":{"id":1,"from":0,"to":5,"limit":3,"offset":0}}}'
+content_children_range_invalid_payload='{"jsonrpc":"2.0","id":"children-range-invalid-doc","method":"tools/call","params":{"name":"evo.content.children_range","arguments":{"id":1,"from":5,"to":2,"limit":1,"offset":0}}}'
 
 init_headers_file="${TMP_DIR}/init.headers"
 init_raw=$(curl -sS -D "${init_headers_file}" \
@@ -312,6 +315,21 @@ get_raw=$(mcp_post_with_optional_session "${content_get_payload}" "${get_headers
 get_http_code=$(printf '%s' "${get_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
 get_response=$(printf '%s' "${get_raw}" | sed '/^__HTTP_CODE__:/d')
 
+neighbors_headers_file="${TMP_DIR}/neighbors.headers"
+neighbors_raw=$(mcp_post_with_optional_session "${content_neighbors_payload}" "${neighbors_headers_file}")
+neighbors_http_code=$(printf '%s' "${neighbors_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
+neighbors_response=$(printf '%s' "${neighbors_raw}" | sed '/^__HTTP_CODE__:/d')
+
+children_range_headers_file="${TMP_DIR}/children-range.headers"
+children_range_raw=$(mcp_post_with_optional_session "${content_children_range_payload}" "${children_range_headers_file}")
+children_range_http_code=$(printf '%s' "${children_range_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
+children_range_response=$(printf '%s' "${children_range_raw}" | sed '/^__HTTP_CODE__:/d')
+
+children_range_invalid_headers_file="${TMP_DIR}/children-range-invalid.headers"
+children_range_invalid_raw=$(mcp_post_with_optional_session "${content_children_range_invalid_payload}" "${children_range_invalid_headers_file}")
+children_range_invalid_http_code=$(printf '%s' "${children_range_invalid_raw}" | sed -n 's/^__HTTP_CODE__://p' | tail -n 1)
+children_range_invalid_response=$(printf '%s' "${children_range_invalid_raw}" | sed '/^__HTTP_CODE__:/d')
+
 echo "[demo-verify] Step 4/4: running full test suite with runtime HTTP integration"
 
 set +e
@@ -329,6 +347,8 @@ EMCP_STASK_LIFECYCLE_CHECK=1 \
 EMCP_STASK_WORKER_CMD="php artisan stask:worker" \
 EMCP_STASK_WORKER_CWD="${DEMO_CORE_DIR_PATH}" \
 EMCP_STASK_POLL_ATTEMPTS=20 \
+EMCP_MIGRATION_CHECK_ENABLED=1 \
+EMCP_CORE_DIR="${DEMO_CORE_DIR_PATH}" \
 composer run test
 test_exit=$?
 set -e
@@ -685,7 +705,49 @@ Contract note:
 - \`result.structuredContent\` is the canonical contract payload.
 - \`result.content[].text\` is a compatibility mirror for MCP clients that rely on text blocks.
 
-### 6) security negative probe: 401 unauthenticated
+### 6) optional tool probe: evo.content.neighbors
+
+Request:
+\`\`\`json
+${content_neighbors_payload}
+\`\`\`
+
+HTTP: \`${neighbors_http_code}\`
+
+Response:
+\`\`\`json
+${neighbors_response}
+\`\`\`
+
+### 7) optional tool probe: evo.content.children_range
+
+Request:
+\`\`\`json
+${content_children_range_payload}
+\`\`\`
+
+HTTP: \`${children_range_http_code}\`
+
+Response:
+\`\`\`json
+${children_range_response}
+\`\`\`
+
+### 8) optional tool negative probe: evo.content.children_range (from > to)
+
+Request:
+\`\`\`json
+${content_children_range_invalid_payload}
+\`\`\`
+
+HTTP: \`${children_range_invalid_http_code}\` (validation error signal expected)
+
+Response:
+\`\`\`json
+${children_range_invalid_response}
+\`\`\`
+
+### 9) security negative probe: 401 unauthenticated
 
 HTTP: \`${unauth_http_code}\`
 
@@ -694,7 +756,7 @@ Response:
 ${unauth_response}
 \`\`\`
 
-### 7) security negative probe: 403 scope denied (read-only token on tools/call)
+### 10) security negative probe: 403 scope denied (read-only token on tools/call)
 
 Read-only initialize HTTP: \`${readonly_init_code}\`
 
@@ -705,7 +767,7 @@ Response:
 ${scope_response}
 \`\`\`
 
-### 8) limits negative probe: 415 unsupported media type
+### 11) limits negative probe: 415 unsupported media type
 
 HTTP: \`${unsupported_http_code}\`
 
@@ -714,7 +776,7 @@ Response:
 ${unsupported_response}
 \`\`\`
 
-### 9) limits negative probe: 413 payload too large
+### 12) limits negative probe: 413 payload too large
 
 HTTP: \`${oversized_http_code}\`
 
@@ -727,7 +789,7 @@ Result-size cap probe:
 - status: \`pending\`
 - reason: requires larger dataset or temporary per-server \`max_result_bytes\` override in demo runtime.
 
-### 10) Gate C idempotency probes (reuse + conflict)
+### 13) Gate C idempotency probes (reuse + conflict)
 
 First dispatch HTTP: \`${dispatch_a_http_code}\`
 
@@ -750,7 +812,7 @@ Conflicting dispatch response:
 ${dispatch_conflict_response}
 \`\`\`
 
-### 11) rate-limit probe: 429 with Retry-After
+### 14) rate-limit probe: 429 with Retry-After
 
 429 observed: \`${rate_limit_observed}\`
 Retry-After: \`${rate_retry_after}\`
@@ -762,7 +824,7 @@ Response:
 ${rate_limit_response}
 \`\`\`
 
-### 12) model sanity probe: evo.model.get(User)
+### 15) model sanity probe: evo.model.get(User)
 
 HTTP: \`${model_http_code}\`
 Result: \`${model_sanity_result}\`
@@ -772,7 +834,7 @@ Response:
 ${model_response}
 \`\`\`
 
-### 13) local sTask lifecycle probe (queued -> completed)
+### 16) local sTask lifecycle probe (queued -> completed)
 
 Dispatch start HTTP: \`${dispatch_lifecycle_start_http_code}\`
 Task ID: \`${dispatch_lifecycle_task_id:-n/a}\`
@@ -830,14 +892,21 @@ curl -sS -H 'Content-Type: application/json' -H 'Authorization: Bearer <TOKEN>' 
   '${mcp_url}'
 \`\`\`
 
-5. User model sanity check (must not expose sensitive fields):
+5. Optional tree probe (neighbors):
+\`\`\`bash
+curl -sS -H 'Content-Type: application/json' -H 'Authorization: Bearer <TOKEN>' \\
+  -d '${content_neighbors_payload}' \\
+  '${mcp_url}'
+\`\`\`
+
+6. User model sanity check (must not expose sensitive fields):
 \`\`\`bash
 curl -sS -H 'Content-Type: application/json' -H 'Authorization: Bearer <TOKEN>' \\
   -d '${model_get_user_payload}' \\
   '${mcp_url}'
 \`\`\`
 
-6. Local sTask worker run (optional lifecycle proof in demo):
+7. Local sTask worker run (optional lifecycle proof in demo):
 \`\`\`bash
 cd '${DEMO_CORE_DIR_PATH}'
 php artisan stask:worker

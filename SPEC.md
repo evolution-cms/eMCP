@@ -19,11 +19,17 @@ Current validation snapshot (2026-03-03):
 - Verified content-read tool flow in runtime (`evo.content.search`, `evo.content.root_tree`, `evo.content.get`).
 - One-click verification writes `demo/logs.md` with request/response evidence, negative transport/security probes (`401/403/413/415/409/429`) and model-safety sanity (`evo.model.get(User)` without sensitive fields).
 - `demo/logs.md` also captures local `sTask` lifecycle proof (`queued -> completed`) in demo runtime.
+- CI/local test baseline now includes: `ScopePolicy`/`ServerRegistry` unit checks, async failover behavior checks, SiteContent tree/TV contract checks, security guardrail checks, docs/config/commands consistency checks, upstream adapter smoke checks.
+- Optional advanced tree tools (`neighbors`, `prev/next siblings`, `children/siblings range`) are implemented and covered by contract/runtime integration tests.
+- Streaming policy now enforces proxy/FPM-safe SSE headers (`Content-Type: text/event-stream`, `Cache-Control: no-cache, no-transform`, `X-Accel-Buffering: no`) with dedicated tests.
+- CI includes migration matrix automation for `sqlite/mysql/pgsql`.
+- CI/check flow now produces reproducible benchmark and leaderboard artifacts.
 
 Open RC-1 validation scope:
 - live CI runtime integration jobs are wired for `release/*` pushes (`demo-runtime-proof`, `runtime-integration`), but branch-protection required-check enforcement must be configured in repository settings;
 - live async `sTask` e2e checks (queue lifecycle/progress/failover) are not yet enforced in CI;
-- live stream/rate-limit infra checks remain pending as RC evidence.
+- live stream/rate-limit infra checks on external target env remain pending as RC evidence;
+- first RC tag is pending manual release approval flow.
 
 ## 0. Джерела
 - `/Users/dmi3yy/PhpstormProjects/Extras/LaravelMcp` — upstream `laravel/mcp`.
@@ -586,7 +592,7 @@ Behavior mapping to Evo model API:
 - `evo.content.children` -> direct children (`parent = id`) or `getChildren()`.
 - `evo.content.siblings` -> `scopeSiblingsOf(id)` and related sibling selectors when requested.
 
-Advanced optional tools (Post-MVP):
+Advanced optional tools (implemented, non-canonical):
 - `evo.content.neighbors` -> `scopeNeighborsOf(id)`.
 - `evo.content.prev_siblings` -> `scopePrevSiblingsOf(id)`.
 - `evo.content.next_siblings` -> `scopeNextSiblingsOf(id)`.

@@ -172,6 +172,9 @@ Expected:
 5. manager and API initialize checks pass.
 6. rate-limit check returns deterministic `429`.
 7. security defaults are confirmed (`enable_write_tools=false`, deny-by-default).
+8. `composer run test:integration:clean-install` passes and writes `demo/clean-install.log`.
+9. migration matrix checks pass (`scripts/migration_matrix_check.sh sqlite|mysql|pgsql`).
+10. benchmark artifacts are generated (`composer run benchmark:run` + `composer run benchmark:leaderboard`).
 
 ## 8) Ecosystem Interop Quick Path
 1. Validate API exposure path (`sApi`):

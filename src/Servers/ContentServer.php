@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace EvolutionCMS\eMCP\Servers;
 
 use EvolutionCMS\eMCP\Tools\Content\ContentChildrenTool;
+use EvolutionCMS\eMCP\Tools\Content\ContentChildrenRangeTool;
 use EvolutionCMS\eMCP\Tools\Content\ContentGetTool;
 use EvolutionCMS\eMCP\Tools\Content\ContentRootTreeTool;
 use EvolutionCMS\eMCP\Tools\Content\ContentSearchTool;
 use EvolutionCMS\eMCP\Tools\Content\ContentDescendantsTool;
 use EvolutionCMS\eMCP\Tools\Content\ContentAncestorsTool;
+use EvolutionCMS\eMCP\Tools\Content\ContentNeighborsTool;
+use EvolutionCMS\eMCP\Tools\Content\ContentNextSiblingsTool;
+use EvolutionCMS\eMCP\Tools\Content\ContentPrevSiblingsTool;
 use EvolutionCMS\eMCP\Tools\Content\ContentSiblingsTool;
+use EvolutionCMS\eMCP\Tools\Content\ContentSiblingsRangeTool;
 use EvolutionCMS\eMCP\Tools\ModelCatalog\ModelGetTool;
 use EvolutionCMS\eMCP\Tools\ModelCatalog\ModelListTool;
 use Laravel\Mcp\Server;
@@ -31,6 +36,11 @@ class ContentServer extends Server
         ContentAncestorsTool::class,
         ContentChildrenTool::class,
         ContentSiblingsTool::class,
+        ContentNeighborsTool::class,
+        ContentPrevSiblingsTool::class,
+        ContentNextSiblingsTool::class,
+        ContentChildrenRangeTool::class,
+        ContentSiblingsRangeTool::class,
         ModelListTool::class,
         ModelGetTool::class,
     ];

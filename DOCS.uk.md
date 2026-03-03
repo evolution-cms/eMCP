@@ -297,7 +297,7 @@ Upstream Laravel MCP очікує `routes/ai.php`.
 - `evo.content.children`
 - `evo.content.siblings`
 
-Розширені (post-MVP) tree tools:
+Опційні (вже реалізовані) tree tools:
 - `evo.content.neighbors`
 - `evo.content.prev_siblings`
 - `evo.content.next_siblings`
@@ -527,6 +527,9 @@ php artisan emcp:list-servers
 php artisan emcp:sync-workers
 composer run governance:update-lock
 composer run ci:check
+composer run benchmark:run
+composer run benchmark:leaderboard
+composer run test:integration:clean-install
 EMCP_INTEGRATION_ENABLED=1 EMCP_BASE_URL="https://example.org" EMCP_API_PATH="/api/v1/mcp/{server}" EMCP_API_TOKEN="<jwt>" composer run test:integration:runtime
 ```
 

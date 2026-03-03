@@ -40,6 +40,115 @@ jobs:
       - name: Run CI checks
         run: composer run ci:check
 
+      - name: Generate benchmark artifacts
+        run: |
+          set -eu
+          composer run benchmark:run
+          composer run benchmark:leaderboard
+
+      - name: Upload benchmark artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-artifacts
+          path: |
+            build/benchmarks/simulation-report.json
+            build/benchmarks/leaderboard.md
+          if-no-files-found: warn
+
+  migration-matrix:
+    needs: checks
+    if: >-
+      ${{
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/'))
+        || (github.event_name == 'workflow_dispatch')
+      }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        db:
+          - sqlite
+          - mysql
+          - pgsql
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: emcp_demo
+          MYSQL_USER: emcp
+          MYSQL_PASSWORD: emcp
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=30
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: emcp_demo
+          POSTGRES_USER: emcp
+          POSTGRES_PASSWORD: emcp
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U emcp -d emcp_demo"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=30
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install Evolution installer
+        run: |
+          set -eu
+          composer global require evolution-cms/installer --no-interaction --no-progress
+          echo "$(composer global config bin-dir --absolute)" >> "$GITHUB_PATH"
+
+      - name: Run migration matrix checks
+        run: |
+          set -eu
+          case "${{ matrix.db }}" in
+            sqlite)
+              sh scripts/migration_matrix_check.sh sqlite
+              ;;
+            mysql)
+              EVO_DB_HOST=127.0.0.1 EVO_DB_PORT=3306 EVO_DB_USER=emcp EVO_DB_PASSWORD=emcp EVO_DB_NAME=emcp_demo sh scripts/migration_matrix_check.sh mysql
+              ;;
+            pgsql)
+              EVO_DB_HOST=127.0.0.1 EVO_DB_PORT=5432 EVO_DB_USER=emcp EVO_DB_PASSWORD=emcp EVO_DB_NAME=emcp_demo sh scripts/migration_matrix_check.sh pgsql
+              ;;
+            *)
+              echo "Unsupported DB matrix value: ${{ matrix.db }}" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Upload migration matrix artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-matrix-${{ matrix.db }}
+          path: |
+            demo/core/storage/logs/*.log
+            demo/core/storage/framework/cache/**/*.php
+          if-no-files-found: warn
+
   runtime-integration:
     needs: checks
     if: >-
@@ -130,7 +239,7 @@ jobs:
           echo "$(composer global config bin-dir --absolute)" >> "$GITHUB_PATH"
 
       - name: Run demo runtime proof
-        run: make demo-all
+        run: composer run test:integration:clean-install
 
       - name: Upload demo runtime artifacts
         if: always()
@@ -139,5 +248,6 @@ jobs:
           name: demo-runtime-artifacts
           path: |
             demo/logs.md
+            demo/clean-install.log
             /tmp/emcp-demo-php-server.log
           if-no-files-found: warn

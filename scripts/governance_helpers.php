@@ -148,3 +148,36 @@ function governance_major(string $version): int
 
     return is_numeric($major) ? (int)$major : 0;
 }
+
+function governance_golden_fixtures_hash(string $fixturesDir): string
+{
+    $required = [
+        'initialize.json',
+        'tools_list.json',
+        'evo_content_search.json',
+        'evo_content_get.json',
+    ];
+
+    $chunks = [];
+    foreach ($required as $fixture) {
+        $path = rtrim($fixturesDir, '/\\') . DIRECTORY_SEPARATOR . $fixture;
+        $raw = file_get_contents($path);
+        if (!is_string($raw) || trim($raw) === '') {
+            throw new RuntimeException("Unable to read golden fixture: {$fixture}");
+        }
+
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded)) {
+            throw new RuntimeException("Golden fixture is not a valid JSON object: {$fixture}");
+        }
+
+        $normalized = json_encode($decoded, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        if (!is_string($normalized)) {
+            throw new RuntimeException("Unable to normalize golden fixture: {$fixture}");
+        }
+
+        $chunks[] = $fixture . ':' . hash('sha256', $normalized);
+    }
+
+    return hash('sha256', implode('|', $chunks));
+}

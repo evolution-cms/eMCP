@@ -486,6 +486,112 @@ foreach ($targets as $target) {
         fail("{$label} tools/call returned JSON-RPC error: {$msg}");
     }
 
+    $advancedCalls = [
+        [
+            'name' => 'evo.content.neighbors',
+            'arguments' => ['id' => 1, 'limit' => 2, 'offset' => 0],
+        ],
+        [
+            'name' => 'evo.content.prev_siblings',
+            'arguments' => ['id' => 1, 'limit' => 2, 'offset' => 0],
+        ],
+        [
+            'name' => 'evo.content.next_siblings',
+            'arguments' => ['id' => 1, 'limit' => 2, 'offset' => 0],
+        ],
+        [
+            'name' => 'evo.content.children_range',
+            'arguments' => ['id' => 1, 'from' => 0, 'to' => 5, 'limit' => 2, 'offset' => 0],
+        ],
+        [
+            'name' => 'evo.content.siblings_range',
+            'arguments' => ['id' => 1, 'from' => 0, 'to' => 5, 'limit' => 2, 'offset' => 0],
+        ],
+    ];
+
+    foreach ($advancedCalls as $advancedCall) {
+        $advancedName = (string)$advancedCall['name'];
+        $advancedResponse = httpPostJson($url, [
+            'jsonrpc' => '2.0',
+            'id' => 'advanced-' . $advancedName,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => $advancedName,
+                'arguments' => $advancedCall['arguments'],
+            ],
+        ], $callHeaders);
+
+        if ($advancedResponse['status'] !== 200) {
+            fail("{$label} {$advancedName} expected HTTP 200, got {$advancedResponse['status']}.");
+        }
+
+        $advancedJson = decodeJson($advancedResponse['body']);
+        if (isset($advancedJson['error'])) {
+            $msg = (string)($advancedJson['error']['message'] ?? 'unknown error');
+            fail("{$label} {$advancedName} returned JSON-RPC error: {$msg}");
+        }
+
+        $structured = $advancedJson['result']['structuredContent'] ?? null;
+        if (!is_array($structured)) {
+            fail("{$label} {$advancedName} missing result.structuredContent object.");
+        }
+
+        if (!is_array($structured['items'] ?? null)) {
+            fail("{$label} {$advancedName} structuredContent.items must be an array.");
+        }
+
+        if (($structured['meta']['toolsetVersion'] ?? null) !== $toolsetVersion) {
+            fail("{$label} {$advancedName} toolsetVersion mismatch in structuredContent meta.");
+        }
+    }
+
+    $invalidRange = httpPostJson($url, [
+        'jsonrpc' => '2.0',
+        'id' => 'invalid-range-1',
+        'method' => 'tools/call',
+        'params' => [
+            'name' => 'evo.content.children_range',
+            'arguments' => [
+                'id' => 1,
+                'from' => 5,
+                'to' => 2,
+                'limit' => 1,
+                'offset' => 0,
+            ],
+        ],
+    ], $callHeaders);
+
+    if ($invalidRange['status'] !== 200) {
+        fail("{$label} invalid range expected HTTP 200 JSON-RPC error envelope, got {$invalidRange['status']}.");
+    }
+
+    $invalidRangeJson = decodeJson($invalidRange['body']);
+    $invalidRangeCode = $invalidRangeJson['error']['code'] ?? null;
+    if ($invalidRangeCode === -32602) {
+        // Canonical JSON-RPC invalid params branch.
+    } else {
+        // Some runtime versions surface tool validation through result.isError content blocks.
+        $invalidResult = $invalidRangeJson['result'] ?? null;
+        if (!is_array($invalidResult) || ($invalidResult['isError'] ?? null) !== true) {
+            fail("{$label} invalid range expected JSON-RPC -32602 or result.isError=true.");
+        }
+
+        $contentBlocks = $invalidResult['content'] ?? null;
+        if (!is_array($contentBlocks) || $contentBlocks === []) {
+            fail("{$label} invalid range isError response missing result.content.");
+        }
+
+        $firstBlock = $contentBlocks[0] ?? null;
+        if (!is_array($firstBlock)) {
+            fail("{$label} invalid range isError content block is invalid.");
+        }
+
+        $message = strtolower(trim((string)($firstBlock['text'] ?? '')));
+        if ($message === '' || !str_contains($message, 'greater than or equal to from')) {
+            fail("{$label} invalid range isError response missing expected validation message.");
+        }
+    }
+
     if ($runModelSanity) {
         $modelCall = httpPostJson($url, [
             'jsonrpc' => '2.0',

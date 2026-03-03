@@ -10,6 +10,7 @@ $lockPath = $root . '/.ci/governance-lock.json';
 $toolset = governance_parse_toolset($root . '/TOOLSET.md');
 $spec = governance_parse_spec($root . '/SPEC.md');
 $modelHash = governance_model_allowlists_hash($root . '/src/Support/ModelFieldPolicy.php');
+$fixturesHash = governance_golden_fixtures_hash($root . '/tests/Fixtures/golden');
 
 $payload = [
     'toolset_version' => $toolset['toolset_version'],
@@ -18,6 +19,7 @@ $payload = [
     'runtime_status' => $spec['runtime_status'],
     'spec_public_contract_hash' => $spec['public_contract_hash'],
     'model_allowlists_hash' => $modelHash,
+    'golden_fixtures_hash' => $fixturesHash,
     'updated_at' => date(DATE_ATOM),
 ];
 
