@@ -18,6 +18,10 @@ class EnsureMcpScopes
 
     public function handle(Request $request, Closure $next)
     {
+        if ($this->authModeIsNone()) {
+            return $next($request);
+        }
+
         if (!(bool)config('cms.settings.eMCP.auth.require_scopes', true)) {
             return $next($request);
         }
@@ -64,5 +68,12 @@ class EnsureMcpScopes
         }
 
         return false;
+    }
+
+    private function authModeIsNone(): bool
+    {
+        $mode = strtolower(trim((string)config('cms.settings.eMCP.auth.mode', 'sapi_jwt')));
+
+        return $mode === 'none';
     }
 }

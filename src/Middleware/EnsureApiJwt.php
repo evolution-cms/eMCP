@@ -14,6 +14,10 @@ class EnsureApiJwt
 {
     public function handle(Request $request, Closure $next): Response
     {
+        if ($this->authModeIsNone()) {
+            return $next($request);
+        }
+
         if (!class_exists(JwtAuthMiddleware::class)) {
             return TransportError::response($request, 401, 'unauthenticated', 'Unauthenticated');
         }
@@ -48,6 +52,13 @@ class EnsureApiJwt
         }
 
         return $response;
+    }
+
+    private function authModeIsNone(): bool
+    {
+        $mode = strtolower(trim((string)config('cms.settings.eMCP.auth.mode', 'sapi_jwt')));
+
+        return $mode === 'none';
     }
 
     private function isRawSapiErrorResponse(Response $response): bool
