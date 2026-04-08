@@ -32,7 +32,7 @@ Versioning і BC policy: `PRD.md` (розділ `API Stability Policy`).
 
 ## Вимоги
 - Evolution CMS 3.5.2+
-- PHP 8.4+
+- PHP 8.3+
 - Composer 2.2+
 - `seiger/sapi` 1.x (встановлюється як залежність)
 - `seiger/stask` 1.x (встановлюється як залежність)

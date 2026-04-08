@@ -210,7 +210,7 @@
 - Approval gate approve/reject/escalate.
 
 ## 10. Нефункціональні вимоги
-- Сумісність: Evolution CMS `^3.5.2`, PHP `^8.4`, Illuminate `12.*`.
+- Сумісність: Evolution CMS `^3.5.2`, PHP `^8.3`, Illuminate `12.*`.
 - Заборона прямої залежності на `laravel/framework`/`illuminate/foundation`.
 - Безпека: deny-by-default, redaction, allowlist/denylist.
 - Продуктивність: bounded `depth/limit/offset`, bounded result size, pagination required.

@@ -11,9 +11,9 @@
     "laravel-mcp"
   ],
   "require": {
-    "php": "^8.4",
+    "php": "^8.3",
     "evolution-cms/evolution": "^3.5.2",
-    "laravel/mcp": "^0.5",
+    "laravel/mcp": "^0.5.9",
     "seiger/sapi": "^1.0",
     "seiger/stask": "^1.0"
   },
