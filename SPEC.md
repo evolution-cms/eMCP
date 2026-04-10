@@ -161,9 +161,9 @@ eMCP/
 - `name`: `evolution-cms/emcp`
 - `type`: `evolutioncms-plugin`
 - `require`:
-- `php: ^8.4`
+- `php: ^8.3`
 - `evolution-cms/evolution: ^3.5.2`
-- `laravel/mcp: ^0.5`
+- `laravel/mcp: ^0.5.9`
 
 ### 3.2 Required integrations
 - `seiger/sapi` (^1.0, для API mode).

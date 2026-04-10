@@ -78,7 +78,7 @@ php artisan make:mcp-tool HealthTool
 ## 3) Вимоги
 Обовʼязково:
 - Evolution CMS 3.5.2+
-- PHP 8.4+
+- PHP 8.3+
 - Composer 2.2+
 - `seiger/sapi` 1.x
 - `seiger/stask` 1.x
