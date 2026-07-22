@@ -5,25 +5,39 @@ declare(strict_types=1);
 namespace EvolutionCMS\eMCP\Console\Commands;
 
 use EvolutionCMS\eMCP\Http\Controllers\McpManagerController;
+use EvolutionCMS\eMCP\Servers\ContentServer;
 use EvolutionCMS\eMCP\Services\ServerRegistry;
 use Illuminate\Console\Command;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
+/**
+ * Runs protocol-level smoke checks against any configured web MCP server.
+ *
+ * The canonical content server additionally verifies the required Evolution
+ * toolset, while third-party servers only need to satisfy the MCP contract.
+ */
 class eMcpTestCommand extends Command
 {
     protected $signature = 'emcp:test {--server= : Test a specific server handle}';
 
     protected $description = 'Run Gate A smoke checks for initialize/tools:list contract.';
 
+    /**
+     * Execute initialize and tools/list against the selected server handle.
+     *
+     * Registry rejection reasons are rendered when configuration prevents the
+     * requested server from being tested.
+     */
     public function handle(ServerRegistry $registry): int
     {
         $this->line('Running eMCP Gate A smoke checks...');
 
         $servers = $registry->allEnabled();
         if ($servers === []) {
-            $this->error('No enabled servers found in config(mcp.servers).');
+            $this->error('No valid enabled servers found in config(mcp.servers).');
+            $this->renderRegistryDiagnostics($registry);
             return self::FAILURE;
         }
 
@@ -38,6 +52,7 @@ class eMcpTestCommand extends Command
         $serverClass = $registry->resolveWebServerClassByHandle($serverHandle);
         if ($serverClass === null) {
             $this->error("Server [{$serverHandle}] is not a valid web MCP server.");
+            $this->renderRegistryDiagnostics($registry);
             return self::FAILURE;
         }
 
@@ -142,17 +157,7 @@ class eMcpTestCommand extends Command
             }
         }
 
-        $requiredTools = [
-            'evo.content.search',
-            'evo.content.get',
-            'evo.content.root_tree',
-            'evo.content.descendants',
-            'evo.content.ancestors',
-            'evo.content.children',
-            'evo.content.siblings',
-            'evo.model.list',
-            'evo.model.get',
-        ];
+        $requiredTools = $this->requiredToolsForServer($serverClass);
 
         $missingTools = array_values(array_diff($requiredTools, $toolNames));
         if ($missingTools !== []) {
@@ -164,6 +169,47 @@ class eMcpTestCommand extends Command
         $this->info('eMCP smoke test passed.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Return package-owned tools that must be present for a canonical server.
+     *
+     * Third-party servers intentionally receive an empty requirement list so
+     * emcp:test remains a protocol smoke test for arbitrary extensions.
+     *
+     * @return array<int, string>
+     *
+     * @since 1.1.0
+     */
+    private function requiredToolsForServer(string $serverClass): array
+    {
+        if ($serverClass !== ContentServer::class) {
+            return [];
+        }
+
+        return [
+            'evo.content.search',
+            'evo.content.get',
+            'evo.content.root_tree',
+            'evo.content.descendants',
+            'evo.content.ancestors',
+            'evo.content.children',
+            'evo.content.siblings',
+            'evo.model.list',
+            'evo.model.get',
+        ];
+    }
+
+    /**
+     * Print concrete registry rejection reasons below the command failure.
+     *
+     * @since 1.1.0
+     */
+    private function renderRegistryDiagnostics(ServerRegistry $registry): void
+    {
+        foreach ($registry->diagnostics() as $diagnostic) {
+            $this->warn('Registry: ' . $diagnostic);
+        }
     }
 
     /**

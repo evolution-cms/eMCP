@@ -216,6 +216,7 @@ namespace {
     $resolved = $registry->allEnabled();
     assertTrue(count($resolved) === 1, 'Duplicate handle must not register second server');
     assertContainsText(implode("\n", Log::$warnings), 'Duplicate server handle', 'Duplicate handle warning must be logged');
+    assertContainsText(implode("\n", $registry->diagnostics()), 'Duplicate server handle', 'Duplicate handle diagnostic must be exposed');
 
     Log::$warnings = [];
     $config['mcp.servers'] = [
@@ -236,6 +237,23 @@ namespace {
     $resolved = $registry->allEnabled();
     assertTrue($resolved === [], 'External server with evo.* tool namespace must be rejected');
     assertContainsText(implode("\n", Log::$warnings), 'Namespace violation', 'Namespace violation warning must be logged');
+    assertContainsText(implode("\n", $registry->diagnostics()), 'Namespace violation', 'Namespace violation diagnostic must be exposed');
+
+    Log::$warnings = [];
+    $config['mcp.servers'] = [
+        [
+            'enabled' => true,
+            'handle' => 'external',
+            'class' => ExternalEvoServer::class,
+            'transport' => 'web',
+            'tool_names' => ['vendor.content.read', 'evo.content.bad'],
+        ],
+        ['enabled' => true, 'handle' => 'local', 'class' => LocalServer::class, 'transport' => 'local'],
+    ];
+    $registry = new ServerRegistry();
+    $resolved = $registry->allEnabled();
+    assertTrue(!isset($resolved['external']), 'Rejected external server must stay excluded');
+    assertTrue(isset($resolved['local']), 'Rejected server must not reserve valid tool names for later entries');
 
     Log::$warnings = [];
     Mcp::$locals = [];

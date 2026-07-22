@@ -11,6 +11,12 @@ use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Tool;
 
+/**
+ * Resolves enabled MCP servers and enforces registry-wide naming boundaries.
+ *
+ * Invalid entries are excluded from runtime registration while their diagnostics
+ * remain available to operational commands and are also written to the log.
+ */
 class ServerRegistry
 {
     private const CORE_NAMESPACE = 'EvolutionCMS\\eMCP\\';
@@ -21,6 +27,17 @@ class ServerRegistry
     private ?array $servers = null;
 
     /**
+     * Human-readable reasons why configured server entries were rejected.
+     *
+     * @var array<int, string>
+     */
+    private array $diagnostics = [];
+
+    /**
+     * Resolve valid enabled servers once for the current application lifecycle.
+     *
+     * Rejected entries are omitted and described through diagnostics().
+     *
      * @return array<string, array<string, mixed>>
      */
     public function allEnabled(): array
@@ -99,11 +116,14 @@ class ServerRegistry
                     break;
                 }
 
-                $toolNames[$toolName] = $handle;
             }
 
             if (!$acceptServer) {
                 continue;
+            }
+
+            foreach ($serverToolNames as $toolName) {
+                $toolNames[$toolName] = $handle;
             }
 
             $resolved[$handle] = $server;
@@ -144,6 +164,23 @@ class ServerRegistry
     public function handles(): array
     {
         return array_keys($this->allEnabled());
+    }
+
+    /**
+     * Return validation messages collected while resolving configured servers.
+     *
+     * Calling this method triggers resolution when the registry has not yet been
+     * evaluated, so CLI callers always receive complete diagnostics.
+     *
+     * @return array<int, string>
+     *
+     * @since 1.1.0
+     */
+    public function diagnostics(): array
+    {
+        $this->allEnabled();
+
+        return $this->diagnostics;
     }
 
     /**
@@ -220,8 +257,15 @@ class ServerRegistry
         return str_starts_with(ltrim($serverClass, '\\'), self::CORE_NAMESPACE);
     }
 
+    /**
+     * Preserve a registry validation failure for CLI output and runtime logs.
+     *
+     * Debug mode keeps its fail-fast behavior after the message is recorded.
+     */
     private function report(string $message): void
     {
+        $this->diagnostics[] = $message;
+
         if ((bool)config('app.debug', false)) {
             throw new \RuntimeException($message);
         }

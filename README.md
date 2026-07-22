@@ -212,6 +212,20 @@ php artisan mcp:start content-local
 
 For `mcp:start content-local`, first enable `content-local` in `core/custom/config/mcp.php` and disable conflicting server entries if they expose identical tool names.
 
+### Third-party servers
+
+Register project-specific tools on a separate `Laravel\Mcp\Server` class and add
+that class as its own entry in `core/custom/config/mcp.php`. Third-party tool
+names must not use the reserved `evo.*` namespace. Do not subclass the package
+`ContentServer` only to append project tools, because the inherited `evo.*`
+toolset is package-owned and the registry will reject that external server.
+
+`php artisan emcp:test --server=<handle>` runs generic `initialize` and
+`tools/list` checks for third-party servers. When the selected class is the
+canonical eMCP `ContentServer`, it also verifies the required Evolution toolset.
+Use `php artisan emcp:list-servers` to see both accepted servers and concrete
+reasons why configured entries were rejected.
+
 eMCP operational commands:
 - `php artisan emcp:test`
 - `php artisan emcp:list-servers`
